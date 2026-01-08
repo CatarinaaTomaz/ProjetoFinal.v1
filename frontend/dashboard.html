@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - ATEC</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="css/dashboard.css">
+</head>
+<body>
+
+    <div class="d-flex" id="wrapper">
+        <div class="bg-dark text-white" id="sidebar-wrapper">
+            <div class="sidebar-heading text-center py-4 primary-text fs-4 fw-bold text-uppercase border-bottom">
+                <i class="fas fa-user-graduate me-2"></i>ATEC
+            </div>
+            <div class="list-group list-group-flush my-3">
+                <a href="#" class="list-group-item list-group-item-action bg-transparent second-text active" onclick="carregarConteudo('inicio')">
+                    <i class="fas fa-tachometer-alt me-2"></i>Dashboard
+                </a>
+                <a href="#" class="list-group-item list-group-item-action bg-transparent second-text" onclick="carregarConteudo('cursos')">
+                    <i class="fas fa-book me-2"></i>Gestão Cursos
+                </a>
+                <a href="#" class="list-group-item list-group-item-action bg-transparent second-text" onclick="carregarConteudo('turmas')">
+                    <i class="fas fa-users me-2"></i>Gestão Turmas
+                </a>
+                <a href="#" class="list-group-item list-group-item-action bg-transparent second-text" onclick="carregarConteudo('salas')">
+                    <i class="fas fa-chalkboard me-2"></i>Gestão Salas
+                </a>
+                <a href="#" class="list-group-item list-group-item-action bg-transparent second-text" onclick="carregarConteudo('utilizadores')">
+                    <i class="fas fa-user-tie me-2"></i>Utilizadores
+                </a>
+                <a href="#" class="list-group-item list-group-item-action bg-transparent text-danger fw-bold" onclick="logout()">
+                    <i class="fas fa-power-off me-2"></i>Sair
+                </a>
+            </div>
+        </div>
+        <div id="page-content-wrapper">
+            <nav class="navbar navbar-expand-lg navbar-light bg-light py-4 px-4 border-bottom">
+                <div class="d-flex align-items-center">
+                    <i class="fas fa-align-left primary-text fs-4 me-3" id="menu-toggle"></i>
+                    <h2 class="fs-2 m-0" id="titulo-seccao">Visão Geral</h2>
+                </div>
+            </nav>
+
+            <div class="container-fluid px-4 mt-4" id="conteudo-principal">
+                <div class="row">
+                    <div class="col-md-3">
+                        <div class="p-3 bg-white shadow-sm d-flex justify-content-around align-items-center rounded">
+                            <div>
+                                <h3 class="fs-2">0</h3>
+                                <p class="fs-5">Cursos</p>
+                            </div>
+                            <i class="fas fa-book fs-1 primary-text border rounded-full secondary-bg p-3"></i>
+                        </div>
+                    </div>
+                    </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="js/dashboard.js"></script>
+</body>
+</html>

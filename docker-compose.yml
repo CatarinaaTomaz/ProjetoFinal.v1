@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  db:
+    image: mariadb:10.6
+    container_name: mysql_auth_container
+    restart: always
+    command: --default-authentication-plugin=mysql_native_password
+    environment:
+      MYSQL_ROOT_PASSWORD: passwordmaster # Senha de super utilizador
+      MYSQL_DATABASE: db_project         # Nome da base de dados a criar
+      MYSQL_USER: user            # Utilizador para a tua aplicação usar
+      MYSQL_PASSWORD: pass614    # Senha para a tua aplicação
+    ports:
+      - "3307:3306" # Porta de acesso externo
+    volumes:
+      - db_data:/var/lib/mysql # Volume para persistir dados (não perder ao desligar)
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql # Script para criar tabelas no arranque
+
+volumes:
+  db_data:
