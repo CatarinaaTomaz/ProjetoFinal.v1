@@ -33,6 +33,10 @@ const User = sequelize.define('User', {
         type: DataTypes.STRING,
         allowNull: true
     },
+    facebookId: {
+        type: DataTypes.STRING,
+        allowNull: true
+    },
     // Campos do 2FA
     otp_codigo: {
         type: DataTypes.STRING,
@@ -41,10 +45,16 @@ const User = sequelize.define('User', {
     otp_validade: {
         type: DataTypes.DATE,
         allowNull: true
+    },
+    reset_token: {
+        type: DataTypes.STRING,
+        allowNull: true
+    },
+    reset_expires: {
+        type: DataTypes.DATE,
+        allowNull: true
     }
-    // O roleId é adicionado automaticamente pelo associations.js, 
-    // mas se quiseres podes tê-lo aqui, o Sequelize gere isso.
-}, {
+    }, {
     tableName: 'utilizadores',
     timestamps: true
 });

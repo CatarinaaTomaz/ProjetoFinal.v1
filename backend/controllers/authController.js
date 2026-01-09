@@ -206,3 +206,84 @@ exports.verifyTwoFactor = async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 };
+
+// PEDIR O RESET (Envia o Email)
+exports.forgotPassword = async (req, res) => {
+    try {
+        const { email } = req.body;
+        const user = await User.findOne({ where: { email } });
+
+        if (!user) {
+            return res.status(404).json({ msg: 'Email não encontrado.' });
+        }
+
+        // Gerar um token aleatório seguro
+        const token = crypto.randomBytes(20).toString('hex');
+        
+        // O token expira em 1 hora
+        const now = new Date();
+        now.setHours(now.getHours() + 1);
+
+        user.reset_token = token;
+        user.reset_expires = now;
+        await user.save();
+
+        // Link para o FRONTEND (Ajusta a porta 5500 se o teu Live Server for diferente)
+        const resetLink = `http://127.0.0.1:5500/frontend/reset-password.html?token=${token}`;
+
+        await sendEmail({
+            email: user.email,
+            subject: 'Recuperação de Password - ATEC',
+            html: `
+                <h3>Recuperar Password</h3>
+                <p>Recebemos um pedido para alterar a tua password.</p>
+                <p>Clica no link abaixo para criar uma nova:</p>
+                <a href="${resetLink}">Redefinir Password</a>
+                <br><br>
+                <small>Este link expira em 1 hora.</small>
+            `
+        });
+
+        res.json({ msg: 'Email de recuperação enviado!' });
+
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ msg: 'Erro ao enviar email.' });
+    }
+};
+
+//GRAVAR A NOVA PASSWORD
+exports.resetPassword = async (req, res) => {
+    try {
+        const { token, newPassword } = req.body;
+        const { Op } = require('sequelize'); // Necessário para comparar datas
+
+        // Procurar user com este token E que o prazo ainda não tenha acabado
+        const user = await User.findOne({ 
+            where: { 
+                reset_token: token,
+                reset_expires: { [Op.gt]: new Date() } // Op.gt significa "Greater Than" (Maior que agora)
+            } 
+        });
+
+        if (!user) {
+            return res.status(400).json({ msg: 'Link inválido ou expirado.' });
+        }
+
+        // Encriptar a nova password
+        const salt = await bcrypt.genSalt(10);
+        user.password_hash = await bcrypt.hash(newPassword, salt);
+        
+        // Limpar os tokens usados
+        user.reset_token = null;
+        user.reset_expires = null;
+        
+        await user.save();
+
+        res.json({ msg: 'Password alterada com sucesso! Podes fazer login.' });
+
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ msg: 'Erro ao alterar password.' });
+    }
+};

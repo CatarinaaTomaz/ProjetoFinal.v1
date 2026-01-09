@@ -2,8 +2,6 @@ const cors = require('cors');
 const path = require('path');
 require('dotenv').config({ path: path.resolve(__dirname, '../.env') }); 
 
-const PORT = process.env.PORT || 3000;
-
 // Teste de Debug (Opcional: para veres no terminal se leu)
 console.log("--------------------------------------");
 console.log("Estado do Servidor:");
@@ -34,7 +32,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes)
 
 // Teste de conexão e arranque
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3007;
 
 // Função para criar as Roles iniciais se não existirem
 async function criarRolesIniciais() {
