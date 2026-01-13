@@ -16,46 +16,73 @@
                 <i class="fas fa-user-graduate me-2"></i>ATEC
             </div>
             <div class="list-group list-group-flush my-3">
-                <a href="#" class="list-group-item list-group-item-action bg-transparent second-text active" onclick="carregarConteudo('inicio')">
-                    <i class="fas fa-tachometer-alt me-2"></i>Dashboard
+                <a href="#" onclick="carregarConteudo('inicio')" class="list-group-item list-group-item-action bg-transparent second-text active">
+                    <i class="fas fa-tachometer-alt me-2"></i>Visão Geral
                 </a>
-                <a href="#" class="list-group-item list-group-item-action bg-transparent second-text" onclick="carregarConteudo('cursos')">
+                <a href="#" onclick="carregarConteudo('cursos')" class="list-group-item list-group-item-action bg-transparent second-text">
                     <i class="fas fa-book me-2"></i>Gestão Cursos
                 </a>
-                <a href="#" class="list-group-item list-group-item-action bg-transparent second-text" onclick="carregarConteudo('turmas')">
-                    <i class="fas fa-users me-2"></i>Gestão Turmas
-                </a>
-                <a href="#" class="list-group-item list-group-item-action bg-transparent second-text" onclick="carregarConteudo('salas')">
-                    <i class="fas fa-chalkboard me-2"></i>Gestão Salas
-                </a>
-                <a href="#" class="list-group-item list-group-item-action bg-transparent second-text" onclick="carregarConteudo('utilizadores')">
+                <a href="#" onclick="carregarConteudo('utilizadores')" class="list-group-item list-group-item-action bg-transparent second-text">
                     <i class="fas fa-user-tie me-2"></i>Utilizadores
                 </a>
-                <a href="#" class="list-group-item list-group-item-action bg-transparent text-danger fw-bold" onclick="logout()">
+                <a href="#" onclick="logout()" class="list-group-item list-group-item-action bg-transparent text-danger fw-bold mt-5">
                     <i class="fas fa-power-off me-2"></i>Sair
                 </a>
             </div>
         </div>
+
         <div id="page-content-wrapper">
-            <nav class="navbar navbar-expand-lg navbar-light bg-light py-4 px-4 border-bottom">
-                <div class="d-flex align-items-center">
-                    <i class="fas fa-align-left primary-text fs-4 me-3" id="menu-toggle"></i>
-                    <h2 class="fs-2 m-0" id="titulo-seccao">Visão Geral</h2>
+            <nav class="navbar navbar-expand-lg navbar-light bg-light py-4 px-4 border-bottom shadow-sm">
+                <div class="d-flex align-items-center justify-content-between w-100">
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-align-left primary-text fs-4 me-3" id="menu-toggle" style="cursor: pointer;"></i>
+                        <h2 class="fs-2 m-0" id="titulo-seccao">Dashboard</h2>
+                    </div>
+                    <div class="d-flex align-items-center">
+                         <i class="fas fa-user-circle fs-3 me-2"></i>
+                         <span id="topo-nome-user" class="fw-bold">Admin</span>
+                    </div>
                 </div>
             </nav>
 
             <div class="container-fluid px-4 mt-4" id="conteudo-principal">
-                <div class="row">
-                    <div class="col-md-3">
-                        <div class="p-3 bg-white shadow-sm d-flex justify-content-around align-items-center rounded">
-                            <div>
-                                <h3 class="fs-2">0</h3>
-                                <p class="fs-5">Cursos</p>
-                            </div>
-                            <i class="fas fa-book fs-1 primary-text border rounded-full secondary-bg p-3"></i>
+                </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modalEditarUser" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title">Editar Utilizador</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="formEditarUser">
+                        <input type="hidden" id="editId">
+                        <div class="mb-3">
+                            <label class="form-label">Nome</label>
+                            <input type="text" class="form-control" id="editNome">
                         </div>
-                    </div>
-                    </div>
+                        <div class="mb-3">
+                            <label class="form-label">Email</label>
+                            <input type="email" class="form-control" id="editEmail">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Perfil</label>
+                            <select class="form-select" id="editRole">
+                                <option value="1">Admin</option>
+                                <option value="2">Formando</option>
+                                <option value="3">Formador</option>
+                                <option value="4">Secretaria</option>
+                            </select>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" onclick="guardarEdicao()">Salvar</button>
+                </div>
             </div>
         </div>
     </div>
