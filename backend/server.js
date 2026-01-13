@@ -11,6 +11,7 @@ console.log("--------------------------------------");
 
 const userRoutes = require('./routes/userRoutes');
 const authRoutes = require('./routes/authRoutes');
+const cursoRoutes = require('./routes/cursoRoutes');
 const db = require('./config/db');
 const bcrypt = require('bcryptjs')
 const express = require('express');
@@ -26,13 +27,16 @@ const app = express();
 // Middlewares
 app.use(cors()); // Permite que o FrontEnd aceda ao BackEnd
 app.use(express.json()); // Permite ler JSON no body dos pedidos
+// Isto diz: "Quem pedir '/uploads', mostramos os ficheiros da pasta real 'uploads'"
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Rotas
 app.use('/api/auth', authRoutes); 
 app.use('/api/users', userRoutes)
+app.use('/api/cursos', cursoRoutes);
 
 // Teste de conexão e arranque
-const PORT = process.env.PORT || 3007;
+const PORT = process.env.PORT || 3000;
 
 // Função para criar as Roles iniciais se não existirem
 async function criarRolesIniciais() {

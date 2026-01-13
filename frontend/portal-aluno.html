@@ -10,15 +10,8 @@
     <style>
         body { background-color: #f0f2f5; }
         .top-bar { background-color: #1e3c72; color: white; }
-        .card-profile { border-top: 4px solid #1e3c72; }
-        .avatar-circle {
-            width: 100px; height: 100px;
-            background-color: #e9ecef;
-            border-radius: 50%;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 3rem; color: #1e3c72;
-            margin: 0 auto;
-        }
+        /* Efeito de hover na imagem de perfil */
+        #imgPerfil:hover { opacity: 0.8; transition: 0.3s; }
     </style>
 </head>
 <body>
@@ -40,19 +33,28 @@
         <div class="row">
             
             <div class="col-md-4 mb-4">
-                <div class="card card-profile shadow-sm">
-                    <div class="card-body text-center pt-5">
-                        <div class="avatar-circle mb-3">
-                            <i class="fas fa-user"></i>
-                        </div>
-                        <h4 class="card-title mb-0" id="userName">A carregar...</h4>
-                        <p class="text-muted" id="userRole">Formando</p>
+                <div class="card shadow-sm border-0">
+                    <div class="card-body text-center p-4">
                         
-                        <div class="d-grid gap-2 mt-4">
-                            <button class="btn btn-primary" onclick="alert('Funcionalidade de editar foto em breve!')">
-                                <i class="fas fa-camera me-2"></i>Alterar Foto
-                            </button>
+                        <div class="d-flex justify-content-center mb-3">
+                            <img src="https://cdn-icons-png.flaticon.com/512/149/149071.png" 
+                                 id="imgPerfil" 
+                                 class="rounded-circle border border-3 border-light shadow-sm" 
+                                 width="150" height="150" 
+                                 style="object-fit: cover; cursor: pointer;"
+                                 onclick="document.getElementById('inputFoto').click()"
+                                 title="Clica para alterar a foto"
+                                 alt="Foto de Perfil">
                         </div>
+
+                        <h4 class="fw-bold mb-1" id="nomeAluno">Carregando...</h4>
+                        <p class="text-muted mb-4" id="cursoAluno">...</p>
+
+                        <button class="btn btn-primary px-4 rounded-pill" onclick="document.getElementById('inputFoto').click()">
+                            <i class="fas fa-camera me-2"></i>Alterar Foto
+                        </button>
+
+                        <input type="file" id="inputFoto" style="display: none;" accept="image/*" onchange="uploadFoto()">
                     </div>
                 </div>
             </div>
@@ -60,20 +62,20 @@
             <div class="col-md-8">
                 
                 <div class="card shadow-sm mb-4">
-                    <div class="card-header bg-white fw-bold">
+                    <div class="card-header bg-white fw-bold py-3">
                         <i class="fas fa-id-card me-2 text-primary"></i>Os Meus Dados
                     </div>
                     <div class="card-body">
                         <div class="row mb-3">
-                            <div class="col-sm-3 fw-bold">Email:</div>
+                            <div class="col-sm-3 fw-bold text-secondary">Email:</div>
                             <div class="col-sm-9" id="userEmail">...</div>
                         </div>
                         <div class="row mb-3">
-                            <div class="col-sm-3 fw-bold">ID Aluno:</div>
+                            <div class="col-sm-3 fw-bold text-secondary">ID Aluno:</div>
                             <div class="col-sm-9" id="userId">...</div>
                         </div>
                         <div class="row mb-3">
-                            <div class="col-sm-3 fw-bold">Estado:</div>
+                            <div class="col-sm-3 fw-bold text-secondary">Estado:</div>
                             <div class="col-sm-9">
                                 <span class="badge bg-success">Ativo</span>
                             </div>
@@ -82,7 +84,7 @@
                 </div>
 
                 <div class="card shadow-sm">
-                    <div class="card-header bg-white fw-bold">
+                    <div class="card-header bg-white fw-bold py-3">
                         <i class="fas fa-shield-alt me-2 text-primary"></i>Segurança e Definições
                     </div>
                     <div class="card-body">
@@ -102,7 +104,7 @@
                                 <h6 class="mb-0">Palavra-passe</h6>
                                 <small class="text-muted">A última alteração foi feita via Google Login.</small>
                             </div>
-                            <button class="btn btn-outline-secondary btn-sm" onclick="alert('Usa a recuperação de password no login.')">Alterar</button>
+                            <button class="btn btn-outline-secondary btn-sm" onclick="alert('Usa a recuperação de password na página de login.')">Alterar</button>
                         </div>
 
                     </div>

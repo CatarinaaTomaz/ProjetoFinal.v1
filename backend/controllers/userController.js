@@ -72,3 +72,30 @@ exports.deleteUser = async (req, res) => {
         res.status(500).json({ msg: "Erro ao eliminar." });
     }
 };
+
+// UPLOAD DE FOTO
+exports.uploadFoto = async (req, res) => {
+    try {
+        const { id } = req.params;
+        
+        if (!req.file) {
+            return res.status(400).json({ msg: "Nenhum ficheiro enviado." });
+        }
+
+        const user = await User.findByPk(id);
+        if (!user) return res.status(404).json({ msg: "Utilizador não encontrado" });
+
+        // Guardar o caminho da foto na BD (ex: uploads/user-123.jpg)
+        // Nota: No Windows as barras vêm trocadas, forçamos a barra normal '/'
+        const fotoPath = req.file.path.replace(/\\/g, "/"); 
+        
+        user.foto = fotoPath;
+        await user.save();
+
+        res.json({ msg: "Foto atualizada!", foto: fotoPath });
+
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ msg: "Erro ao carregar foto." });
+    }
+};

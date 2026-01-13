@@ -53,6 +53,11 @@ const User = sequelize.define('User', {
     reset_expires: {
         type: DataTypes.DATE,
         allowNull: true
+    },
+    foto: {
+        type: DataTypes.STRING,
+        allowNull: true,
+        defaultValue: null // Se não tiver foto, fica null
     }
     }, {
     tableName: 'utilizadores',
