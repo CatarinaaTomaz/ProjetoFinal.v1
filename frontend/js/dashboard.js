@@ -1,24 +1,29 @@
 const API_URL = 'http://localhost:3000/api';
 
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
     
     // ==========================================
-    // 1. INICIALIZAÇÃO E SEGURANÇA
+    // 1. PROCESSAR LOGIN SOCIAL
     // ==========================================
-
-    // CAPTURAR DADOS NOVOS QUE VÊM DA URL (Google/Facebook)
     const params = new URLSearchParams(window.location.search);
     const tokenUrl = params.get('token');
     const userUrl = params.get('user');
 
     if (tokenUrl && userUrl) {
-        console.log("Login Social detetado! Atualizando dados...");
-        localStorage.setItem('token', tokenUrl);
-        localStorage.setItem('user', decodeURIComponent(userUrl));
-        window.history.replaceState({}, document.title, "dashboard.html");
+        try {
+            const userStringDecoded = decodeURIComponent(userUrl);
+            const userData = JSON.parse(userStringDecoded);
+            localStorage.setItem('token', tokenUrl);
+            localStorage.setItem('user', JSON.stringify(userData));
+            window.history.replaceState({}, document.title, "dashboard.html");
+        } catch (error) {
+            console.error("Erro login social:", error);
+        }
     }
 
-    // LER DADOS DA MEMÓRIA
+    // ==========================================
+    // 2. VERIFICAÇÃO DE SEGURANÇA E ROLES
+    // ==========================================
     const token = localStorage.getItem('token');
     const userStr = localStorage.getItem('user');
 
@@ -27,24 +32,33 @@ document.addEventListener("DOMContentLoaded", () => {
         return;
     }
 
-    const user = JSON.parse(userStr);
-    
-    // LOG DE DEBUG (Para veres quem está logado)
-    console.log("User Logado:", user.nome, "| Role:", user.role);
+    let user;
+    try { user = JSON.parse(userStr); } 
+    catch (e) { logout(); return; }
 
-    // BLOQUEIO DE ALUNOS: Se não for Admin, manda para o Portal
-    if (user.role !== 'Admin') {
-        console.warn("Acesso negado. Redirecionando para o Portal do Aluno...");
-        window.location.href = 'portal-aluno.html';
+    // BLOQUEIO: Só Admin e Secretaria entram aqui
+    const rolesPermitidas = ['Admin', 'Secretaria'];
+    
+    if (!rolesPermitidas.includes(user.role)) {
+        console.warn("Acesso negado. Redirecionando...");
+        if (user.role === 'Formador') window.location.href = 'portal-formador.html';
+        else window.location.href = 'portal-aluno.html';
         return; 
     }
 
-    // Configurar o botão de esconder menu
-    const el = document.getElementById("wrapper");
+    // ==========================================
+    // 3. INICIALIZAR O DASHBOARD
+    // ==========================================
+    
+    // Nome e Role no Topo
+    const topoNome = document.getElementById('topo-nome-user');
+    if(topoNome) topoNome.innerHTML = `${user.nome || user.nome_completo} <small class="text-white-50">(${user.role})</small>`;
+
+    // Configurar menu lateral
     const toggleButton = document.getElementById("menu-toggle");
     if(toggleButton) {
         toggleButton.onclick = function () {
-            el.classList.toggle("toggled");
+            document.getElementById("wrapper").classList.toggle("toggled");
         };
     }
 
@@ -53,7 +67,7 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 // ==========================================
-// 2. ROUTER (NAVEGAÇÃO)
+// 4. ROUTER (NAVEGAÇÃO)
 // ==========================================
 async function carregarConteudo(tipo) {
     const conteudo = document.getElementById('conteudo-principal');
@@ -66,22 +80,30 @@ async function carregarConteudo(tipo) {
             <div class="row g-3">
                 <div class="col-md-3">
                     <div class="p-3 bg-white shadow-sm d-flex justify-content-around align-items-center rounded border-start border-4 border-primary">
-                        <div><h3 class="fs-2">0</h3><p class="fs-5 text-muted">Cursos</p></div>
+                        <div>
+                            <h3 class="fs-2" id="total-cursos">...</h3>
+                            <p class="fs-5 text-muted">Cursos</p>
+                        </div>
                         <i class="fas fa-book fs-1 text-primary"></i>
                     </div>
                 </div>
                 <div class="col-md-3">
                     <div class="p-3 bg-white shadow-sm d-flex justify-content-around align-items-center rounded border-start border-4 border-success">
-                        <div><h3 class="fs-2">0</h3><p class="fs-5 text-muted">Turmas</p></div>
+                        <div>
+                            <h3 class="fs-2" id="total-turmas">0</h3>
+                            <p class="fs-5 text-muted">Turmas</p>
+                        </div>
                         <i class="fas fa-users fs-1 text-success"></i>
                     </div>
                 </div>
             </div>
             <div class="mt-5 alert alert-light border">
                 <h4>Bem-vindo ao Portal ATEC!</h4>
-                <p>Usa o menu lateral para gerir a escola.</p>
+                <p>Painel de Gestão Escolar.</p>
             </div>
         `;
+        // Chama a função para buscar os números reais
+        atualizarEstatisticas();
     } 
     
     // --- PÁGINA UTILIZADORES ---
@@ -114,7 +136,7 @@ async function carregarConteudo(tipo) {
         await preencherTabelaUtilizadores();
     }
 
-    // --- PÁGINA CURSOS (NOVO!) ---
+    // --- PÁGINA CURSOS ---
     else if (tipo === 'cursos') {
         titulo.innerText = 'Gestão de Cursos';
         conteudo.innerHTML = `
@@ -148,18 +170,46 @@ async function carregarConteudo(tipo) {
 }
 
 // ==========================================
-// 3. LÓGICA DE UTILIZADORES
+// 5. NOVA FUNÇÃO: ESTATÍSTICAS (CONTADORES)
 // ==========================================
+async function atualizarEstatisticas() {
+    const token = localStorage.getItem('token');
+    try {
+        // 1. Contar Cursos
+        const res = await fetch(`${API_URL}/cursos`, {
+            headers: { 'Authorization': 'Bearer ' + token }
+        });
+        if(res.ok) {
+            const cursos = await res.json();
+            const contadorElement = document.getElementById('total-cursos');
+            if(contadorElement) {
+                // A propriedade .length diz-nos quantos itens há no array
+                contadorElement.innerText = cursos.length;
+            }
+        }
+        
+        // (Aqui podes adicionar a lógica para contar Turmas no futuro)
+
+    } catch (error) {
+        console.error("Erro ao carregar estatísticas", error);
+    }
+}
+
+// ==========================================
+// 6. LÓGICA DE DADOS (USERS E CURSOS)
+// ==========================================
+
 async function preencherTabelaUtilizadores() {
     const token = localStorage.getItem('token');
+    const currentUser = JSON.parse(localStorage.getItem('user'));
+    const isAdmin = (currentUser.role === 'Admin');
     const tabela = document.getElementById('tabelaUsers');
 
     try {
-        const res = await fetch(`${API_URL}/users`, {
-            headers: { 'Authorization': 'Bearer ' + token }
-        });
-        const users = await res.json();
+        const res = await fetch(`${API_URL}/users`, { headers: { 'Authorization': 'Bearer ' + token } });
+        if (!res.ok) throw new Error("Erro na API");
         
+        const users = await res.json();
         tabela.innerHTML = ''; 
 
         users.forEach(user => {
@@ -169,9 +219,28 @@ async function preencherTabelaUtilizadores() {
 
             const corBadge = user.conta_ativa ? 'success' : 'danger';
             const textoBadge = user.conta_ativa ? 'Ativo' : 'Inativo';
-            const nomeSafe = user.nome_completo.replace(/'/g, "&#39;");
-            const roleId = user.Role ? user.Role.id_role : 2;
+            const nomeSafe = user.nome_completo ? user.nome_completo.replace(/'/g, "&#39;") : "Sem Nome";
             const roleNome = user.Role ? user.Role.descricao : 'Sem Role';
+            const roleId = user.Role ? user.Role.id_role : 2;
+
+            let accoesHTML = '';
+            if (isAdmin) {
+                accoesHTML = `
+                    <button class="btn btn-sm btn-warning text-white" 
+                        onclick="abrirModalUser(${user.id_user}, '${nomeSafe}', '${user.email}', ${roleId})">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="btn btn-sm btn-danger" onclick="eliminarUser(${user.id_user})">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                `;
+            } else {
+                accoesHTML = `<span class="text-muted" title="Apenas leitura"><i class="fas fa-lock"></i></span>`;
+            }
+
+            let estadoHTML = isAdmin 
+                ? `<span class="badge bg-${corBadge}" style="cursor:pointer" onclick="alterarEstado(${user.id_user})">${textoBadge} <i class="fas fa-sync-alt ms-1 small"></i></span>`
+                : `<span class="badge bg-${corBadge}">${textoBadge}</span>`;
 
             const linha = `
                 <tr>
@@ -180,37 +249,23 @@ async function preencherTabelaUtilizadores() {
                     <td>${user.email}</td>
                     <td><span class="badge bg-info text-dark">${roleNome}</span></td>
                     <td class="text-center">${loginIcon}</td>
-                    <td>
-                        <span class="badge bg-${corBadge}" style="cursor:pointer" onclick="alterarEstado(${user.id_user})">
-                            ${textoBadge} <i class="fas fa-sync-alt ms-1 small"></i>
-                        </span>
-                    </td>
-                    <td>
-                        <button class="btn btn-sm btn-warning text-white" 
-                            onclick="abrirModalUser(${user.id_user}, '${nomeSafe}', '${user.email}', ${roleId})">
-                            <i class="fas fa-edit"></i>
-                        </button>
-                        <button class="btn btn-sm btn-danger" onclick="eliminarUser(${user.id_user})">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </td>
-                </tr>
-            `;
+                    <td>${estadoHTML}</td>
+                    <td>${accoesHTML}</td>
+                </tr>`;
             tabela.innerHTML += linha;
         });
     } catch (error) {
+        console.error(error);
         tabela.innerHTML = '<tr><td colspan="7" class="text-danger text-center">Erro ao carregar dados.</td></tr>';
     }
 }
 
-// Funções de Ação (User)
 function abrirModalUser(id, nome, email, roleId) {
     document.getElementById('editId').value = id;
     document.getElementById('editNome').value = nome;
     document.getElementById('editEmail').value = email;
     document.getElementById('editRole').value = roleId;
-    const modal = new bootstrap.Modal(document.getElementById('modalEditarUser'));
-    modal.show();
+    new bootstrap.Modal(document.getElementById('modalEditarUser')).show();
 }
 
 async function guardarEdicaoUser() {
@@ -227,10 +282,12 @@ async function guardarEdicaoUser() {
             body: JSON.stringify({ nome, email, roleId })
         });
         if (res.ok) {
-            alert('Guardado com sucesso!');
+            alert('Guardado!');
             bootstrap.Modal.getInstance(document.getElementById('modalEditarUser')).hide();
             preencherTabelaUtilizadores();
-        } else alert('Erro ao guardar.');
+        } else {
+            alert('Erro ao guardar.');
+        }
     } catch (error) { console.error(error); }
 }
 
@@ -242,7 +299,7 @@ async function alterarEstado(id) {
             headers: { 'Authorization': 'Bearer ' + token }
         });
         preencherTabelaUtilizadores();
-    } catch (error) { alert('Erro na ligação'); }
+    } catch (e) { alert('Erro na ligação'); }
 }
 
 async function eliminarUser(id) {
@@ -254,33 +311,24 @@ async function eliminarUser(id) {
             headers: { 'Authorization': 'Bearer ' + token }
         });
         preencherTabelaUtilizadores();
-    } catch (error) { alert('Erro ao eliminar'); }
+    } catch (e) { alert('Erro ao eliminar'); }
 }
 
-// ==========================================
-// 4. LÓGICA DE CURSOS 
-// ==========================================
 async function preencherTabelaCursos() {
     const token = localStorage.getItem('token');
     const tabela = document.getElementById('tabelaCursos');
 
     try {
-        const res = await fetch(`${API_URL}/cursos`, {
-            headers: { 'Authorization': 'Bearer ' + token }
-        });
+        const res = await fetch(`${API_URL}/cursos`, { headers: { 'Authorization': 'Bearer ' + token } });
         const cursos = await res.json();
-        
         tabela.innerHTML = '';
-
         if (cursos.length === 0) {
             tabela.innerHTML = '<tr><td colspan="6" class="text-center text-muted">Nenhum curso encontrado.</td></tr>';
             return;
         }
-
         cursos.forEach(curso => {
             const inicio = new Date(curso.data_inicio).toLocaleDateString('pt-PT');
             const fim = new Date(curso.data_fim).toLocaleDateString('pt-PT');
-
             const linha = `
                 <tr>
                     <td>#${curso.id_curso}</td>
@@ -297,30 +345,20 @@ async function preencherTabelaCursos() {
                             <i class="fas fa-trash"></i>
                         </button>
                     </td>
-                </tr>
-            `;
+                </tr>`;
             tabela.innerHTML += linha;
         });
-    } catch (error) {
-        tabela.innerHTML = '<tr><td colspan="6" class="text-danger text-center">Erro ao carregar cursos.</td></tr>';
-    }
+    } catch (e) { tabela.innerHTML = '<tr><td colspan="6" class="text-danger text-center">Erro ao carregar cursos.</td></tr>'; }
 }
 
-function abrirModalCurso(id = null, nome = '', area = 'Informática', inicio = '', fim = '') {
+function abrirModalCurso(id = null, nome = '', area = 'TPSI', inicio = '', fim = '') {
     document.getElementById('cursoId').value = id || '';
     document.getElementById('cursoNome').value = nome;
     document.getElementById('cursoArea').value = area;
-    
-    // Tratamento de datas para o input type="date"
     if(inicio) document.getElementById('cursoInicio').value = inicio.split('T')[0];
-    else document.getElementById('cursoInicio').value = '';
-
     if(fim) document.getElementById('cursoFim').value = fim.split('T')[0];
-    else document.getElementById('cursoFim').value = '';
-
     document.getElementById('tituloModalCurso').innerText = id ? 'Editar Curso' : 'Novo Curso';
-    const modal = new bootstrap.Modal(document.getElementById('modalCurso'));
-    modal.show();
+    new bootstrap.Modal(document.getElementById('modalCurso')).show();
 }
 
 async function guardarCurso() {
@@ -330,29 +368,25 @@ async function guardarCurso() {
     const data_inicio = document.getElementById('cursoInicio').value;
     const data_fim = document.getElementById('cursoFim').value;
     const token = localStorage.getItem('token');
-
     const metodo = id ? 'PUT' : 'POST'; 
     const url = id ? `${API_URL}/cursos/${id}` : `${API_URL}/cursos`;
-
+    
     try {
         const res = await fetch(url, {
             method: metodo,
             headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
             body: JSON.stringify({ nome, area, data_inicio, data_fim })
         });
-
         if (res.ok) {
-            alert('Curso guardado com sucesso!');
+            alert('Curso guardado!');
             bootstrap.Modal.getInstance(document.getElementById('modalCurso')).hide();
             preencherTabelaCursos();
-        } else {
-            alert('Erro ao guardar curso.');
-        }
-    } catch (error) { console.error(error); }
+        } else alert('Erro ao guardar.');
+    } catch (e) { console.error(e); }
 }
 
 async function eliminarCurso(id) {
-    if(!confirm("Tens a certeza que queres eliminar este curso?")) return;
+    if(!confirm("Eliminar curso?")) return;
     const token = localStorage.getItem('token');
     try {
         await fetch(`${API_URL}/cursos/${id}`, {
@@ -360,12 +394,9 @@ async function eliminarCurso(id) {
             headers: { 'Authorization': 'Bearer ' + token }
         });
         preencherTabelaCursos();
-    } catch (error) { alert('Erro ao eliminar'); }
+    } catch (e) { alert('Erro ao eliminar'); }
 }
 
-// ==========================================
-// 5. UTILITÁRIOS
-// ==========================================
 function logout() {
     localStorage.clear();
     window.location.href = 'login.html';

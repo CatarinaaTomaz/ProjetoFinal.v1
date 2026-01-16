@@ -41,7 +41,7 @@ const PORT = process.env.PORT || 3000;
 // Função para criar as Roles iniciais se não existirem
 async function criarRolesIniciais() {
     try {
-        const roles = ['Admin', 'Formando', 'Formador'];
+        const roles = ['Admin', 'Formando', 'Formador', 'Secretaria'];
         
         for (const roleName of roles) {
             await Role.findOrCreate({

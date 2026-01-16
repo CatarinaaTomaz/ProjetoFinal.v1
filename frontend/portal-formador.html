@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portal do Formador - ATEC</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <style>
+        body { background-color: #f0f2f5; }
+        .top-bar { background-color: #2c3e50; color: white; } /* Cor diferente para distinguir (Azul Escuro/Cinza) */
+        #imgPerfil:hover { opacity: 0.8; transition: 0.3s; }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar navbar-expand-lg top-bar shadow-sm">
+        <div class="container">
+            <a class="navbar-brand text-white fw-bold" href="#">
+                <i class="fas fa-chalkboard-teacher me-2"></i>Área do Formador
+            </a>
+            <div class="d-flex">
+                <button class="btn btn-outline-light btn-sm" onclick="logout()">
+                    <i class="fas fa-sign-out-alt me-2"></i>Sair
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-5">
+        <div class="row">
+            
+            <div class="col-md-4 mb-4">
+                <div class="card shadow-sm border-0">
+                    <div class="card-body text-center p-4">
+                        <div class="d-flex justify-content-center mb-3">
+                            <img src="https://cdn-icons-png.flaticon.com/512/149/149071.png" 
+                                 id="imgPerfil" 
+                                 class="rounded-circle border border-3 border-light shadow-sm" 
+                                 width="150" height="150" 
+                                 style="object-fit: cover; cursor: pointer;"
+                                 onclick="document.getElementById('inputFoto').click()"
+                                 title="Clica para alterar foto">
+                        </div>
+                        <h4 class="fw-bold mb-1" id="nomeUser">Carregando...</h4>
+                        <p class="text-muted mb-4" id="roleUser">Formador</p>
+
+                        <button class="btn btn-secondary px-4 rounded-pill" onclick="document.getElementById('inputFoto').click()">
+                            <i class="fas fa-camera me-2"></i>Alterar Foto
+                        </button>
+                        <input type="file" id="inputFoto" style="display: none;" accept="image/*" onchange="uploadFoto()">
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-8">
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-white fw-bold py-3">
+                        <i class="fas fa-user-tie me-2 text-secondary"></i>Dados do Formador
+                    </div>
+                    <div class="card-body">
+                        <div class="row mb-3">
+                            <div class="col-sm-3 fw-bold text-secondary">Email:</div>
+                            <div class="col-sm-9" id="userEmail">...</div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-sm-3 fw-bold text-secondary">ID Sistema:</div>
+                            <div class="col-sm-9" id="userId">...</div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-sm-3 fw-bold text-secondary">Estado:</div>
+                            <div class="col-sm-9"><span class="badge bg-success">Ativo</span></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/portal-formador.js"></script>
+</body>
+</html>
