@@ -1,5 +1,12 @@
 const API_URL = 'http://localhost:3000/api';
 
+// ==========================================
+// VARIÁVEIS GLOBAIS (Para as pesquisas)
+// ==========================================
+let todosUtilizadores = [];
+let todosCursos = [];
+let todosModulos = []; 
+
 document.addEventListener("DOMContentLoaded", async () => {
     
     // ==========================================
@@ -33,8 +40,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     let user;
-    try { user = JSON.parse(userStr); } 
-    catch (e) { logout(); return; }
+    try { 
+        user = JSON.parse(userStr); 
+    } catch (e) { 
+        logout(); 
+        return; 
+    }
 
     // BLOQUEIO: Só Admin e Secretaria entram aqui
     const rolesPermitidas = ['Admin', 'Secretaria'];
@@ -52,7 +63,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     
     // Nome e Role no Topo
     const topoNome = document.getElementById('topo-nome-user');
-    if(topoNome) topoNome.innerHTML = `${user.nome || user.nome_completo} <small class="text-white-50">(${user.role})</small>`;
+    if(topoNome) {
+        topoNome.innerHTML = `${user.nome || user.nome_completo} <small class="text-white-50">(${user.role})</small>`;
+    }
 
     // Configurar menu lateral
     const toggleButton = document.getElementById("menu-toggle");
@@ -102,7 +115,6 @@ async function carregarConteudo(tipo) {
                 <p>Painel de Gestão Escolar.</p>
             </div>
         `;
-        // Chama a função para buscar os números reais
         atualizarEstatisticas();
     } 
     
@@ -110,6 +122,15 @@ async function carregarConteudo(tipo) {
     else if (tipo === 'utilizadores') {
         titulo.innerText = 'Gestão de Utilizadores';
         conteudo.innerHTML = `
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <div class="input-group shadow-sm">
+                        <span class="input-group-text bg-white border-end-0"><i class="fas fa-search text-muted"></i></span>
+                        <input type="text" class="form-control border-start-0" id="pesquisaUser" placeholder="Pesquisar utilizador..." onkeyup="filtrarUtilizadores()">
+                    </div>
+                </div>
+            </div>
+
             <div class="card shadow-sm border-0">
                 <div class="card-body">
                     <div class="table-responsive">
@@ -140,9 +161,21 @@ async function carregarConteudo(tipo) {
     else if (tipo === 'cursos') {
         titulo.innerText = 'Gestão de Cursos';
         conteudo.innerHTML = `
-            <button class="btn btn-success mb-3 shadow-sm" onclick="abrirModalCurso()">
-                <i class="fas fa-plus me-2"></i>Novo Curso
-            </button>
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <button class="btn btn-success shadow-sm" onclick="abrirModalCurso()">
+                    <i class="fas fa-plus me-2"></i>Novo Curso
+                </button>
+            </div>
+
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <div class="input-group shadow-sm">
+                        <span class="input-group-text bg-white border-end-0"><i class="fas fa-search text-muted"></i></span>
+                        <input type="text" class="form-control border-start-0" id="pesquisaCurso" placeholder="Pesquisar curso por nome ou área..." onkeyup="filtrarCursos()">
+                    </div>
+                </div>
+            </div>
+
             <div class="card shadow-sm border-0">
                 <div class="card-body">
                     <div class="table-responsive">
@@ -167,15 +200,61 @@ async function carregarConteudo(tipo) {
         `;
         await preencherTabelaCursos();
     }
+
+    // --- PÁGINA MÓDULOS (NOVA) ---
+    else if (tipo === 'modulos') {
+        titulo.innerText = 'Gestão de Módulos';
+        conteudo.innerHTML = `
+            <div class="alert alert-info border-start border-4 border-info">
+                <i class="fas fa-info-circle me-2"></i>Primeiro seleciona um curso para ver e gerir os seus módulos.
+            </div>
+            
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <label class="form-label fw-bold">Selecionar Curso:</label>
+                    <select class="form-select shadow-sm" id="filtroCursoModulo" onchange="carregarModulosDoCurso()">
+                        <option value="">-- Escolhe um curso --</option>
+                    </select>
+                </div>
+                <div class="col-md-6 d-flex align-items-end">
+                    <button class="btn btn-warning text-dark w-100 shadow-sm" id="btnNovoModulo" onclick="abrirModalModulo()" disabled>
+                        <i class="fas fa-plus me-2"></i>Adicionar Módulo ao Curso
+                    </button>
+                </div>
+            </div>
+
+            <div class="card shadow-sm border-0">
+                <div class="card-body">
+                    <h5 class="card-title mb-3 text-secondary" id="tituloListaModulos">Lista de Módulos</h5>
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Nome do Módulo</th>
+                                    <th>Descrição</th>
+                                    <th class="text-end">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabelaModulos">
+                                <tr><td colspan="4" class="text-center text-muted">Seleciona um curso acima.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        `;
+        // Carrega a lista de cursos para o dropdown
+        await preencherSelectCursos();
+    }
 }
 
 // ==========================================
-// 5. NOVA FUNÇÃO: ESTATÍSTICAS (CONTADORES)
+// 5. ESTATÍSTICAS
 // ==========================================
 async function atualizarEstatisticas() {
     const token = localStorage.getItem('token');
     try {
-        // 1. Contar Cursos
         const res = await fetch(`${API_URL}/cursos`, {
             headers: { 'Authorization': 'Bearer ' + token }
         });
@@ -183,81 +262,103 @@ async function atualizarEstatisticas() {
             const cursos = await res.json();
             const contadorElement = document.getElementById('total-cursos');
             if(contadorElement) {
-                // A propriedade .length diz-nos quantos itens há no array
                 contadorElement.innerText = cursos.length;
             }
         }
-        
-        // (Aqui podes adicionar a lógica para contar Turmas no futuro)
-
     } catch (error) {
         console.error("Erro ao carregar estatísticas", error);
     }
 }
 
 // ==========================================
-// 6. LÓGICA DE DADOS (USERS E CURSOS)
+// 6. LÓGICA DE UTILIZADORES
 // ==========================================
 
 async function preencherTabelaUtilizadores() {
     const token = localStorage.getItem('token');
-    const currentUser = JSON.parse(localStorage.getItem('user'));
-    const isAdmin = (currentUser.role === 'Admin');
-    const tabela = document.getElementById('tabelaUsers');
-
+    
     try {
         const res = await fetch(`${API_URL}/users`, { headers: { 'Authorization': 'Bearer ' + token } });
         if (!res.ok) throw new Error("Erro na API");
         
-        const users = await res.json();
-        tabela.innerHTML = ''; 
+        todosUtilizadores = await res.json();
+        desenharTabelaUsers(todosUtilizadores);
 
-        users.forEach(user => {
-            let loginIcon = '<i class="fas fa-envelope text-secondary"></i>';
-            if (user.googleId) loginIcon = '<i class="fab fa-google text-danger"></i>';
-            else if (user.facebookId) loginIcon = '<i class="fab fa-facebook text-primary"></i>';
-
-            const corBadge = user.conta_ativa ? 'success' : 'danger';
-            const textoBadge = user.conta_ativa ? 'Ativo' : 'Inativo';
-            const nomeSafe = user.nome_completo ? user.nome_completo.replace(/'/g, "&#39;") : "Sem Nome";
-            const roleNome = user.Role ? user.Role.descricao : 'Sem Role';
-            const roleId = user.Role ? user.Role.id_role : 2;
-
-            let accoesHTML = '';
-            if (isAdmin) {
-                accoesHTML = `
-                    <button class="btn btn-sm btn-warning text-white" 
-                        onclick="abrirModalUser(${user.id_user}, '${nomeSafe}', '${user.email}', ${roleId})">
-                        <i class="fas fa-edit"></i>
-                    </button>
-                    <button class="btn btn-sm btn-danger" onclick="eliminarUser(${user.id_user})">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                `;
-            } else {
-                accoesHTML = `<span class="text-muted" title="Apenas leitura"><i class="fas fa-lock"></i></span>`;
-            }
-
-            let estadoHTML = isAdmin 
-                ? `<span class="badge bg-${corBadge}" style="cursor:pointer" onclick="alterarEstado(${user.id_user})">${textoBadge} <i class="fas fa-sync-alt ms-1 small"></i></span>`
-                : `<span class="badge bg-${corBadge}">${textoBadge}</span>`;
-
-            const linha = `
-                <tr>
-                    <td>#${user.id_user}</td>
-                    <td class="fw-bold">${user.nome_completo}</td>
-                    <td>${user.email}</td>
-                    <td><span class="badge bg-info text-dark">${roleNome}</span></td>
-                    <td class="text-center">${loginIcon}</td>
-                    <td>${estadoHTML}</td>
-                    <td>${accoesHTML}</td>
-                </tr>`;
-            tabela.innerHTML += linha;
-        });
     } catch (error) {
         console.error(error);
-        tabela.innerHTML = '<tr><td colspan="7" class="text-danger text-center">Erro ao carregar dados.</td></tr>';
+        const tabela = document.getElementById('tabelaUsers');
+        if(tabela) tabela.innerHTML = '<tr><td colspan="7" class="text-danger text-center">Erro ao carregar dados.</td></tr>';
     }
+}
+
+function desenharTabelaUsers(listaUsers) {
+    const tabela = document.getElementById('tabelaUsers');
+    const currentUser = JSON.parse(localStorage.getItem('user'));
+    const isAdmin = (currentUser.role === 'Admin');
+
+    if (!tabela) return;
+
+    tabela.innerHTML = ''; 
+
+    if (listaUsers.length === 0) {
+        tabela.innerHTML = '<tr><td colspan="7" class="text-center text-muted">Nenhum utilizador encontrado.</td></tr>';
+        return;
+    }
+
+    listaUsers.forEach(user => {
+        let loginIcon = '<i class="fas fa-envelope text-secondary"></i>';
+        if (user.googleId) loginIcon = '<i class="fab fa-google text-danger"></i>';
+        else if (user.facebookId) loginIcon = '<i class="fab fa-facebook text-primary"></i>';
+
+        const corBadge = user.conta_ativa ? 'success' : 'danger';
+        const textoBadge = user.conta_ativa ? 'Ativo' : 'Inativo';
+        const nomeSafe = user.nome_completo ? user.nome_completo.replace(/'/g, "&#39;") : "Sem Nome";
+        const roleNome = user.Role ? user.Role.descricao : 'Sem Role';
+        const roleId = user.Role ? user.Role.id_role : 2;
+
+        let accoesHTML = '';
+        if (isAdmin) {
+            accoesHTML = `
+                <button class="btn btn-sm btn-warning text-white" 
+                    onclick="abrirModalUser(${user.id_user}, '${nomeSafe}', '${user.email}', ${roleId})">
+                    <i class="fas fa-edit"></i>
+                </button>
+                <button class="btn btn-sm btn-danger" onclick="eliminarUser(${user.id_user})">
+                    <i class="fas fa-trash"></i>
+                </button>
+            `;
+        } else {
+            accoesHTML = `<span class="text-muted" title="Apenas leitura"><i class="fas fa-lock"></i></span>`;
+        }
+
+        let estadoHTML = isAdmin 
+            ? `<span class="badge bg-${corBadge}" style="cursor:pointer" onclick="alterarEstado(${user.id_user})">${textoBadge} <i class="fas fa-sync-alt ms-1 small"></i></span>`
+            : `<span class="badge bg-${corBadge}">${textoBadge}</span>`;
+
+        const linha = `
+            <tr>
+                <td>#${user.id_user}</td>
+                <td class="fw-bold">${user.nome_completo}</td>
+                <td>${user.email}</td>
+                <td><span class="badge bg-info text-dark">${roleNome}</span></td>
+                <td class="text-center">${loginIcon}</td>
+                <td>${estadoHTML}</td>
+                <td>${accoesHTML}</td>
+            </tr>`;
+        tabela.innerHTML += linha;
+    });
+}
+
+function filtrarUtilizadores() {
+    const texto = document.getElementById('pesquisaUser').value.toLowerCase();
+    
+    const usersFiltrados = todosUtilizadores.filter(user => {
+        const nome = user.nome_completo ? user.nome_completo.toLowerCase() : '';
+        const email = user.email ? user.email.toLowerCase() : '';
+        return nome.includes(texto) || email.includes(texto);
+    });
+
+    desenharTabelaUsers(usersFiltrados);
 }
 
 function abrirModalUser(id, nome, email, roleId) {
@@ -314,41 +415,71 @@ async function eliminarUser(id) {
     } catch (e) { alert('Erro ao eliminar'); }
 }
 
+// ==========================================
+// 7. LÓGICA DE CURSOS
+// ==========================================
+
 async function preencherTabelaCursos() {
     const token = localStorage.getItem('token');
-    const tabela = document.getElementById('tabelaCursos');
-
     try {
         const res = await fetch(`${API_URL}/cursos`, { headers: { 'Authorization': 'Bearer ' + token } });
-        const cursos = await res.json();
-        tabela.innerHTML = '';
-        if (cursos.length === 0) {
-            tabela.innerHTML = '<tr><td colspan="6" class="text-center text-muted">Nenhum curso encontrado.</td></tr>';
-            return;
-        }
-        cursos.forEach(curso => {
-            const inicio = new Date(curso.data_inicio).toLocaleDateString('pt-PT');
-            const fim = new Date(curso.data_fim).toLocaleDateString('pt-PT');
-            const linha = `
-                <tr>
-                    <td>#${curso.id_curso}</td>
-                    <td class="fw-bold">${curso.nome}</td>
-                    <td><span class="badge bg-secondary">${curso.area}</span></td>
-                    <td>${inicio}</td>
-                    <td>${fim}</td>
-                    <td>
-                        <button class="btn btn-sm btn-warning text-white" 
-                            onclick="abrirModalCurso(${curso.id_curso}, '${curso.nome}', '${curso.area}', '${curso.data_inicio}', '${curso.data_fim}')">
-                            <i class="fas fa-edit"></i>
-                        </button>
-                        <button class="btn btn-sm btn-danger" onclick="eliminarCurso(${curso.id_curso})">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </td>
-                </tr>`;
-            tabela.innerHTML += linha;
-        });
-    } catch (e) { tabela.innerHTML = '<tr><td colspan="6" class="text-danger text-center">Erro ao carregar cursos.</td></tr>'; }
+        if(!res.ok) throw new Error("Erro API");
+
+        todosCursos = await res.json();
+        desenharTabelaCursos(todosCursos);
+
+    } catch (e) { 
+        const tabela = document.getElementById('tabelaCursos');
+        if(tabela) tabela.innerHTML = '<tr><td colspan="6" class="text-danger text-center">Erro ao carregar cursos.</td></tr>'; 
+    }
+}
+
+function desenharTabelaCursos(listaCursos) {
+    const tabela = document.getElementById('tabelaCursos');
+    if (!tabela) return;
+
+    tabela.innerHTML = '';
+
+    if (listaCursos.length === 0) {
+        tabela.innerHTML = '<tr><td colspan="6" class="text-center text-muted">Nenhum curso encontrado.</td></tr>';
+        return;
+    }
+
+    listaCursos.forEach(curso => {
+        const inicio = new Date(curso.data_inicio).toLocaleDateString('pt-PT');
+        const fim = new Date(curso.data_fim).toLocaleDateString('pt-PT');
+        
+        const linha = `
+            <tr>
+                <td>#${curso.id_curso}</td>
+                <td class="fw-bold">${curso.nome}</td>
+                <td><span class="badge bg-secondary">${curso.area}</span></td>
+                <td>${inicio}</td>
+                <td>${fim}</td>
+                <td>
+                    <button class="btn btn-sm btn-warning text-white" 
+                        onclick="abrirModalCurso(${curso.id_curso}, '${curso.nome}', '${curso.area}', '${curso.data_inicio}', '${curso.data_fim}')">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="btn btn-sm btn-danger" onclick="eliminarCurso(${curso.id_curso})">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
+            </tr>`;
+        tabela.innerHTML += linha;
+    });
+}
+
+function filtrarCursos() {
+    const texto = document.getElementById('pesquisaCurso').value.toLowerCase();
+
+    const cursosFiltrados = todosCursos.filter(curso => {
+        const nome = curso.nome ? curso.nome.toLowerCase() : '';
+        const area = curso.area ? curso.area.toLowerCase() : '';
+        return nome.includes(texto) || area.includes(texto);
+    });
+
+    desenharTabelaCursos(cursosFiltrados);
 }
 
 function abrirModalCurso(id = null, nome = '', area = 'TPSI', inicio = '', fim = '') {
@@ -394,6 +525,140 @@ async function eliminarCurso(id) {
             headers: { 'Authorization': 'Bearer ' + token }
         });
         preencherTabelaCursos();
+    } catch (e) { alert('Erro ao eliminar'); }
+}
+
+// ==========================================
+// 8. LÓGICA DE MÓDULOS (NOVO)
+// ==========================================
+
+// 1. Preencher o Dropdown com Cursos
+async function preencherSelectCursos() {
+    const token = localStorage.getItem('token');
+    const select = document.getElementById('filtroCursoModulo');
+    
+    try {
+        const res = await fetch(`${API_URL}/cursos`, { headers: { 'Authorization': 'Bearer ' + token } });
+        const cursos = await res.json();
+        
+        // Limpar opções antigas
+        select.innerHTML = '<option value="">-- Escolhe um curso --</option>';
+
+        cursos.forEach(c => {
+            const option = document.createElement('option');
+            option.value = c.id_curso;
+            option.text = `${c.nome} (${c.area})`;
+            select.appendChild(option);
+        });
+    } catch (e) { console.error("Erro ao carregar cursos para select"); }
+}
+
+// 2. Carregar Módulos quando muda o Select
+async function carregarModulosDoCurso() {
+    const cursoId = document.getElementById('filtroCursoModulo').value;
+    const btnNovo = document.getElementById('btnNovoModulo');
+    const tabela = document.getElementById('tabelaModulos');
+    const token = localStorage.getItem('token');
+
+    // Se não escolheu nada
+    if (!cursoId) {
+        btnNovo.disabled = true;
+        tabela.innerHTML = '<tr><td colspan="4" class="text-center text-muted">Seleciona um curso acima.</td></tr>';
+        return;
+    }
+
+    // Ativa o botão de criar
+    btnNovo.disabled = false;
+
+    try {
+        // Pedir à API apenas os módulos deste curso
+        const res = await fetch(`${API_URL}/modulos?cursoId=${cursoId}`, { 
+            headers: { 'Authorization': 'Bearer ' + token } 
+        });
+        const modulos = await res.json();
+
+        tabela.innerHTML = '';
+        if (modulos.length === 0) {
+            tabela.innerHTML = '<tr><td colspan="4" class="text-center">Este curso ainda não tem módulos.</td></tr>';
+            return;
+        }
+
+        modulos.forEach(m => {
+            const linha = `
+                <tr>
+                    <td>#${m.id_modulo}</td>
+                    <td class="fw-bold">${m.nome}</td>
+                    <td>${m.descricao || '-'}</td>
+                    <td class="text-end">
+                        <button class="btn btn-sm btn-outline-warning" onclick="abrirModalModulo(${m.id_modulo}, '${m.nome}', '${m.descricao || ''}')">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger" onclick="eliminarModulo(${m.id_modulo})">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            `;
+            tabela.innerHTML += linha;
+        });
+
+    } catch (error) {
+        console.error(error);
+        tabela.innerHTML = '<tr><td colspan="4" class="text-danger text-center">Erro ao carregar módulos.</td></tr>';
+    }
+}
+
+// 3. Abrir Modal (Criar ou Editar Módulo)
+function abrirModalModulo(id = null, nome = '', descricao = '') {
+    const cursoId = document.getElementById('filtroCursoModulo').value; // Vai buscar o ID do curso selecionado
+    
+    document.getElementById('moduloId').value = id || '';
+    document.getElementById('moduloCursoId').value = cursoId; // IMPORTANTE: associa ao curso
+    document.getElementById('moduloNome').value = nome;
+    document.getElementById('moduloDescricao').value = descricao;
+    
+    document.getElementById('tituloModalModulo').innerText = id ? 'Editar Módulo' : 'Novo Módulo';
+    new bootstrap.Modal(document.getElementById('modalModulo')).show();
+}
+
+// 4. Guardar Módulo (POST ou PUT)
+async function guardarModulo() {
+    const id = document.getElementById('moduloId').value;
+    const cursoId = document.getElementById('moduloCursoId').value;
+    const nome = document.getElementById('moduloNome').value;
+    const descricao = document.getElementById('moduloDescricao').value;
+    const token = localStorage.getItem('token');
+
+    const metodo = id ? 'PUT' : 'POST';
+    const url = id ? `${API_URL}/modulos/${id}` : `${API_URL}/modulos`;
+
+    try {
+        const res = await fetch(url, {
+            method: metodo,
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+            body: JSON.stringify({ nome, descricao, cursoId })
+        });
+
+        if (res.ok) {
+            alert('Módulo guardado!');
+            bootstrap.Modal.getInstance(document.getElementById('modalModulo')).hide();
+            carregarModulosDoCurso(); // Atualiza a lista
+        } else {
+            alert('Erro ao guardar módulo.');
+        }
+    } catch (e) { console.error(e); }
+}
+
+// 5. Eliminar Módulo
+async function eliminarModulo(id) {
+    if(!confirm("Eliminar este módulo?")) return;
+    const token = localStorage.getItem('token');
+    try {
+        await fetch(`${API_URL}/modulos/${id}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': 'Bearer ' + token }
+        });
+        carregarModulosDoCurso();
     } catch (e) { alert('Erro ao eliminar'); }
 }
 

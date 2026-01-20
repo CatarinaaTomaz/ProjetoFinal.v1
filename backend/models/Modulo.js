@@ -1,7 +1,7 @@
 const { DataTypes } = require('sequelize');
-const sequelize = require('../config/db');
+const db = require('../config/db');
 
-const Modulo = sequelize.define('Modulo', {
+const Modulo = db.define('Modulo', {
     id_modulo: {
         type: DataTypes.INTEGER,
         primaryKey: true,
@@ -11,13 +11,20 @@ const Modulo = sequelize.define('Modulo', {
         type: DataTypes.STRING,
         allowNull: false
     },
-    horas_totais: { // Para saberes a duração do módulo
+    descricao: {
+        type: DataTypes.TEXT,
+        allowNull: true
+    },cursoId: {
         type: DataTypes.INTEGER,
-        allowNull: false
+        allowNull: false, // Um módulo tem de ter um curso
+        references: {
+            model: 'cursos', // Nome da tabela de cursos
+            key: 'id_curso'
+        }
     }
 }, {
     tableName: 'modulos',
-    timestamps: false
+    timestamps: true
 });
 
 module.exports = Modulo;

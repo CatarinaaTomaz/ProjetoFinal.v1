@@ -12,6 +12,7 @@ console.log("--------------------------------------");
 const userRoutes = require('./routes/userRoutes');
 const authRoutes = require('./routes/authRoutes');
 const cursoRoutes = require('./routes/cursoRoutes');
+const moduloRoutes = require('./routes/moduloRoutes');
 const db = require('./config/db');
 const bcrypt = require('bcryptjs')
 const express = require('express');
@@ -34,6 +35,7 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/api/auth', authRoutes); 
 app.use('/api/users', userRoutes)
 app.use('/api/cursos', cursoRoutes);
+app.use('/api/modulos', moduloRoutes);
 
 // Teste de conexão e arranque
 const PORT = process.env.PORT || 3000;

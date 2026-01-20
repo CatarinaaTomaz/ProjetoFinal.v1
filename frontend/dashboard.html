@@ -22,6 +22,9 @@
                 <a href="#" onclick="carregarConteudo('cursos')" class="list-group-item list-group-item-action bg-transparent second-text">
                     <i class="fas fa-book me-2"></i>Gestão Cursos
                 </a>
+                <a href="#" onclick="carregarConteudo('modulos')" class="list-group-item list-group-item-action bg-transparent second-text">
+                    <i class="fas fa-cubes me-2"></i>Gestão Módulos
+                </a>
                 <a href="#" onclick="carregarConteudo('utilizadores')" class="list-group-item list-group-item-action bg-transparent second-text">
                     <i class="fas fa-user-tie me-2"></i>Utilizadores
                 </a>
@@ -124,6 +127,33 @@
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
                 <button type="button" class="btn btn-success" onclick="guardarCurso()">Guardar</button>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="modal fade" id="modalModulo" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-warning text-dark">
+                <h5 class="modal-title" id="tituloModalModulo">Novo Módulo</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formModulo">
+                    <input type="hidden" id="moduloId">
+                    <input type="hidden" id="moduloCursoId"> <div class="mb-3">
+                        <label class="form-label">Nome do Módulo</label>
+                        <input type="text" class="form-control" id="moduloNome" required placeholder="Ex: Programação Web">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Descrição (Opcional)</label>
+                        <textarea class="form-control" id="moduloDescricao" rows="3"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-warning" onclick="guardarModulo()">Guardar</button>
             </div>
         </div>
     </div>
