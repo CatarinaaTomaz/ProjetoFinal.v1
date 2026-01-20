@@ -1,7 +1,7 @@
 const { DataTypes } = require('sequelize');
-const sequelize = require('../config/db');
+const db = require('../config/db');
 
-const Sala = sequelize.define('Sala', {
+const Sala = db.define('Sala', {
     id_sala: {
         type: DataTypes.INTEGER,
         primaryKey: true,
@@ -9,19 +9,19 @@ const Sala = sequelize.define('Sala', {
     },
     nome: {
         type: DataTypes.STRING,
-        allowNull: false
+        allowNull: false // Ex: "Sala 1.4"
+    },
+    tipo: { 
+        type: DataTypes.ENUM('Sala Teórica', 'Laboratório', 'Auditório'), 
+        defaultValue: 'Sala Teórica'
     },
     capacidade: {
         type: DataTypes.INTEGER,
-        allowNull: false
-    },
-    tipo: { 
-        type: DataTypes.ENUM('Sala Teórica', 'Laboratório', 'Auditório'), // <--- Aceita SÓ estas opções
-        defaultValue: 'Sala Teórica'
+        allowNull: false // Ex: 25 pessoas
     }
 }, {
     tableName: 'salas',
-    timestamps: false
+    timestamps: true
 });
 
 module.exports = Sala;

@@ -23,6 +23,11 @@ const Curso = sequelize.define('Curso', {
     data_fim: {
         type: DataTypes.DATEONLY,
         allowNull: false
+    },
+    status: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: false, // Por defeito, ao criar é "Falso" (Ainda nao comecou)
+        allowNull: false
     }
 }, {
     tableName: 'cursos',

@@ -13,6 +13,7 @@ const userRoutes = require('./routes/userRoutes');
 const authRoutes = require('./routes/authRoutes');
 const cursoRoutes = require('./routes/cursoRoutes');
 const moduloRoutes = require('./routes/moduloRoutes');
+const salaRoutes = require('./routes/salaRoutes');
 const db = require('./config/db');
 const bcrypt = require('bcryptjs')
 const express = require('express');
@@ -36,6 +37,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes)
 app.use('/api/cursos', cursoRoutes);
 app.use('/api/modulos', moduloRoutes);
+app.use('/api/salas', salaRoutes);
 
 // Teste de conexão e arranque
 const PORT = process.env.PORT || 3000;

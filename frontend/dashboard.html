@@ -19,6 +19,9 @@
                 <a href="#" onclick="carregarConteudo('inicio')" class="list-group-item list-group-item-action bg-transparent second-text active">
                     <i class="fas fa-tachometer-alt me-2"></i>Visão Geral
                 </a>
+                <a href="#" onclick="carregarConteudo('salas')" class="list-group-item list-group-item-action bg-transparent second-text">
+                    <i class="fas fa-door-open me-2"></i>Gestão Salas
+                </a>
                 <a href="#" onclick="carregarConteudo('cursos')" class="list-group-item list-group-item-action bg-transparent second-text">
                     <i class="fas fa-book me-2"></i>Gestão Cursos
                 </a>
@@ -122,6 +125,13 @@
                             <input type="date" class="form-control" id="cursoFim" required>
                         </div>
                     </div>
+
+                    <div class="mb-3" id="divStatusCurso" style="display: none;">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="cursoStatus" checked>
+                            <label class="form-check-label" for="cursoStatus">Curso Ativo / A Decorrer</label>
+                        </div>
+                    </div>
                 </form>
             </div>
             <div class="modal-footer">
@@ -154,6 +164,44 @@
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
                 <button type="button" class="btn btn-warning" onclick="guardarModulo()">Guardar</button>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="modal fade" id="modalSala" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-dark">
+                <h5 class="modal-title" id="tituloModalSala">Nova Sala</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formSala">
+                    <input type="hidden" id="salaId">
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Nome da Sala</label>
+                        <input type="text" class="form-control" id="salaNome" required placeholder="Ex: Sala 1.4">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Tipo de Sala</label>
+                        <select class="form-select" id="salaTipo">
+                            <option value="Sala Teórica">Sala Teórica</option>
+                            <option value="Laboratório">Laboratório</option>
+                            <option value="Auditório">Auditório</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Capacidade (Pessoas)</label>
+                        <input type="number" class="form-control" id="salaCapacidade" required placeholder="Ex: 25">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-info" onclick="guardarSala()">Guardar</button>
             </div>
         </div>
     </div>
