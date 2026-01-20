@@ -3,28 +3,39 @@ const router = express.Router();
 const userController = require('../controllers/userController');
 const multer = require('multer');
 const path = require('path');
+const fs = require('fs');
 
-// --- CONFIGURAÇÃO DO MULTER (UPLOAD) ---
+// GARANTIR QUE A PASTA UPLOADS EXISTE
+const uploadDir = path.join(__dirname, '../uploads');
+if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+// 1. CONFIGURAÇÃO DO MULTER (Caminho Absoluto)
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
-        cb(null, 'uploads/'); // Pasta onde guarda
+        // Agora usamos o caminho completo do sistema
+        cb(null, uploadDir); 
     },
     filename: (req, file, cb) => {
-        // Gera um nome único: id_do_user + data + extensão (ex: user-3-123456.jpg)
         const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
         cb(null, 'user-' + uniqueSuffix + path.extname(file.originalname));
     }
 });
+
 const upload = multer({ storage: storage });
 
-// Rotas CRUD para Gestão de Utilizadores 
-router.get('/', userController.listarTodos); //Listar
-router.put('/:id', userController.updateUser);        // Editar dados
-router.put('/:id/status', userController.toggleStatus); // Mudar estado
-router.delete('/:id', userController.deleteUser);     // Eliminar
+// DEBUG
+if (!userController) console.error("ERRO: userController em falta!");
 
-// NOVA ROTA: Upload de Foto
-// 'foto' é o nome do campo que vamos enviar do frontend
-router.post('/:id/foto', upload.single('foto'), userController.uploadFoto);
+// 2. ROTAS
+router.get('/', userController.listarUsers);
+router.post('/', userController.criarUser);
+
+// ROTA DE ATUALIZAÇÃO COM UPLOAD
+router.put('/:id', upload.single('foto'), userController.atualizarUser);
+
+router.delete('/:id', userController.eliminarUser);
+router.put('/:id/status', userController.alterarEstado);
 
 module.exports = router;

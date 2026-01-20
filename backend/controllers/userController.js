@@ -1,101 +1,95 @@
 const { User, Role } = require('../models/associations');
 const bcrypt = require('bcryptjs');
 
-// Função para listar todos os utilizadores
-exports.listarTodos = async (req, res) => {
+// 1. LISTAR
+exports.listarUsers = async (req, res) => {
     try {
         const users = await User.findAll({
-            attributes: { exclude: ['password_hash', 'token_ativacao', 'reset_token'] }, // Esconde dados sensíveis
-            include: [{ model: Role, attributes: ['descricao'] }] 
+            attributes: { exclude: ['password'] },
+            include: [{ model: Role }]
         });
-
         res.json(users);
     } catch (error) {
-        console.error("Erro ao listar users:", error);
-        res.status(500).json({ msg: "Erro ao buscar utilizadores." });
+        console.error("Erro listar:", error);
+        res.status(500).json({ msg: "Erro ao listar." });
     }
 };
 
-//  ATUALIZAR UTILIZADOR (Nome, Email, Role)
-exports.updateUser = async (req, res) => {
+// 2. CRIAR
+exports.criarUser = async (req, res) => {
+    try {
+        const { nome, email, password, roleId } = req.body;
+        const hash = password ? await bcrypt.hash(password, 10) : null;
+        
+        await User.create({
+            nome_completo: nome,
+            email,
+            password: hash,
+            roleId: roleId || 2
+        });
+        res.status(201).json({ msg: "Criado!" });
+    } catch (error) {
+        res.status(500).json({ msg: "Erro ao criar." });
+    }
+};
+
+// 3. ATUALIZAR (Versão Robusta Ant-Crash)
+exports.atualizarUser = async (req, res) => {
     try {
         const { id } = req.params;
-        const { nome, email, roleId } = req.body;
+        
+        // CORREÇÃO DO ERRO: Adicionei "|| {}" para não rebentar se vier vazio
+        const { nome, email, roleId, horas_lecionadas } = req.body || {};
 
         const user = await User.findByPk(id);
-        if (!user) return res.status(404).json({ msg: "Utilizador não encontrado" });
+        if (!user) return res.status(404).json({ msg: "Não encontrado" });
 
-        // Atualiza os dados
-        user.nome_completo = nome;
-        user.email = email;
-        user.roleId = roleId;
-        
+        // Só atualiza SE o dado tiver sido enviado (evita apagar dados sem querer)
+        if (nome) user.nome_completo = nome;
+        if (email) user.email = email;
+        if (roleId) user.roleId = roleId;
+        if (horas_lecionadas !== undefined) user.horas_lecionadas = horas_lecionadas;
+
+        // --- SE HOUVER FOTO NOVA ---
+        // O Multer coloca o ficheiro em req.file
+        if (req.file) {
+            user.foto = req.file.filename;
+        }
+        // ---------------------------
+
         await user.save();
-        res.json({ msg: "Utilizador atualizado com sucesso!" });
-
+        
+        // Devolvemos a foto atualizada para o Frontend mostrar logo
+        res.json({ msg: "Atualizado!", foto: user.foto });
+        
     } catch (error) {
+        console.error("Erro atualizar:", error);
         res.status(500).json({ msg: "Erro ao atualizar." });
     }
 };
 
-// ALTERNAR ESTADO (Ativo/Inativo)
-exports.toggleStatus = async (req, res) => {
+// 4. ELIMINAR
+exports.eliminarUser = async (req, res) => {
     try {
         const { id } = req.params;
-        const user = await User.findByPk(id);
-        
-        if (!user) return res.status(404).json({ msg: "Utilizador não encontrado" });
-
-        // Inverte o estado (se true vira false, se false vira true)
-        user.conta_ativa = !user.conta_ativa;
-        await user.save();
-
-        res.json({ msg: "Estado alterado!", novoEstado: user.conta_ativa });
-
-    } catch (error) {
-        res.status(500).json({ msg: "Erro ao alterar estado." });
-    }
-};
-
-// ELIMINAR UTILIZADOR
-exports.deleteUser = async (req, res) => {
-    try {
-        const { id } = req.params;
-        const user = await User.findByPk(id);
-
-        if (!user) return res.status(404).json({ msg: "Utilizador não encontrado" });
-
-        await user.destroy(); // Apaga da base de dados
-        res.json({ msg: "Utilizador eliminado!" });
-
+        await User.destroy({ where: { id_user: id } });
+        res.json({ msg: "Eliminado!" });
     } catch (error) {
         res.status(500).json({ msg: "Erro ao eliminar." });
     }
 };
 
-// UPLOAD DE FOTO
-exports.uploadFoto = async (req, res) => {
+// 5. ESTADO
+exports.alterarEstado = async (req, res) => {
     try {
         const { id } = req.params;
-        
-        if (!req.file) {
-            return res.status(400).json({ msg: "Nenhum ficheiro enviado." });
-        }
-
         const user = await User.findByPk(id);
-        if (!user) return res.status(404).json({ msg: "Utilizador não encontrado" });
+        if (!user) return res.status(404).json({ msg: "Não encontrado" });
 
-        // Guardar o caminho da foto na BD (ex: uploads/user-123.jpg)
-        // Nota: No Windows as barras vêm trocadas, forçamos a barra normal '/'
-        const fotoPath = req.file.path.replace(/\\/g, "/"); 
-        
-        user.foto = fotoPath;
+        user.conta_ativa = !user.conta_ativa;
         await user.save();
-
-        res.json({ msg: "Foto atualizada!", foto: fotoPath });
-
+        res.json({ msg: "Estado alterado!" });
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ msg: "Erro ao carregar foto." });
+        res.status(500).json({ msg: "Erro estado." });
     }
 };

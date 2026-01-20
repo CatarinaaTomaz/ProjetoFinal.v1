@@ -83,6 +83,10 @@ User.hasMany(Avaliacao, { foreignKey: 'userId' });
 Avaliacao.belongsTo(Modulo, { foreignKey: 'moduloId' });
 Modulo.hasMany(Avaliacao, { foreignKey: 'moduloId' });
 
+// Um Módulo "pertence" a um Formador (User) e a uma Sala
+Modulo.belongsTo(User, { as: 'Formador', foreignKey: 'formadorId' });
+Modulo.belongsTo(Sala, { foreignKey: 'salaId' });
+
 // ==========================================================
 // 5. FUNCIONALIDADES EXTRAS (ANEXOS, CHAT, FALTAS)
 // ==========================================================

@@ -1,8 +1,8 @@
 const API_URL = 'http://localhost:3000/api';
-const BASE_URL = 'http://localhost:3000'; // URL para carregar as imagens
+const BASE_URL = 'http://localhost:3000'; // URL base para imagens
 
 document.addEventListener("DOMContentLoaded", () => {
-    // 1. Verificar se existe Token e Sessão
+    // 1. Verificar Token
     const token = localStorage.getItem('token');
     const userStr = localStorage.getItem('user');
 
@@ -11,97 +11,87 @@ document.addEventListener("DOMContentLoaded", () => {
         return;
     }
 
-    // 2. Preencher os dados na página
+    // 2. Preencher Dados
     try {
         const user = JSON.parse(userStr);
 
-        // Preencher textos (Nome, Email, Role, ID)
-        // Usamos || para garantir que funciona com diferentes formatos de objeto
-        document.getElementById('nomeAluno').textContent = user.nome || user.nome_completo || 'Utilizador';
-        
-        // Se tiveres elementos com estes IDs no HTML, preenche-os:
+        // Preencher textos
+        if(document.getElementById('nomeAluno')) document.getElementById('nomeAluno').textContent = user.nome || user.nome_completo || 'Utilizador';
         if(document.getElementById('userEmail')) document.getElementById('userEmail').textContent = user.email;
         if(document.getElementById('userRole')) document.getElementById('userRole').textContent = user.role || 'Formando';
         if(document.getElementById('userId')) document.getElementById('userId').textContent = user.id || user.id_user;
         if(document.getElementById('cursoAluno')) document.getElementById('cursoAluno').textContent = user.role || 'Formando';
 
-        // 3. CARREGAR FOTO DE PERFIL EXISTENTE
-        // Se o user já tiver uma foto salva no localStorage (ou vinda do login), mostramos
+        // 3. Carregar Foto
+        // Se a foto não começar por "http" (login social), adicionamos o prefixo da pasta uploads
         if (user.foto) {
-            // A foto vem como "uploads/imagem.jpg", temos de juntar ao localhost
-            document.getElementById('imgPerfil').src = `${BASE_URL}/${user.foto}`;
-        } else {
-            // Se for login social (Google/Facebook) e tiver foto externa
-            // (Esta lógica é opcional, depende se guardaste a foto do Google)
-            if(user.picture) { 
-                 document.getElementById('imgPerfil').src = user.picture;
-            }
+            const fotoSrc = user.foto.startsWith('http') 
+                ? user.foto 
+                : `${BASE_URL}/uploads/${user.foto}`;
+            document.getElementById('imgPerfil').src = fotoSrc;
         }
 
     } catch (e) {
-        console.error("Erro ao ler dados do utilizador", e);
-        logout(); // Se os dados estiverem corrompidos, força logout
+        console.error("Erro ao ler utilizador:", e);
+        logout();
     }
 });
 
 // ==========================================
-// FUNÇÕES GLOBAIS (Acessíveis pelo HTML)
+// FUNÇÃO DE UPLOAD CORRIGIDA (PUT)
 // ==========================================
-
 async function uploadFoto() {
     const input = document.getElementById('inputFoto');
     const file = input.files[0];
     
     if (!file) return;
 
-    // Obter dados frescos
+    // Dados Atuais
     const userStr = localStorage.getItem('user');
     const user = JSON.parse(userStr);
     const token = localStorage.getItem('token');
-    
-    // Garantir que temos o ID correto
     const userId = user.id || user.id_user;
 
-    // Preparar o envio (FormData)
+    // PREPARAR FORMDATA (Correção: precisamos enviar os outros campos também ou o backend pode reclamar)
+    // No entanto, o nosso controlador atualiza apenas o que enviamos se estiver bem feito.
+    // Como segurança, enviamos o nome e email atuais para não os perder.
     const formData = new FormData();
     formData.append('foto', file);
+    formData.append('nome', user.nome || user.nome_completo);
+    formData.append('email', user.email);
 
     try {
-        // Feedback visual (imagem fica transparente enquanto carrega)
         const imgElement = document.getElementById('imgPerfil');
         imgElement.style.opacity = '0.5';
 
-        const res = await fetch(`${API_URL}/users/${userId}/foto`, {
-            method: 'POST',
-            headers: {
-                'Authorization': 'Bearer ' + token
-                // Nota: O browser define o Content-Type automaticamente para FormData
-            },
+        // CORREÇÃO: Usar a rota PUT /users/:id (a mesma do Dashboard)
+        const res = await fetch(`${API_URL}/users/${userId}`, {
+            method: 'PUT',
+            headers: { 'Authorization': 'Bearer ' + token },
             body: formData
         });
 
         const data = await res.json();
 
         if (res.ok) {
-            // 1. Atualizar a imagem na página
-            // O timestamp (?t=...) obriga o browser a não usar a cache antiga
-            const novaFotoUrl = `${BASE_URL}/${data.foto}`;
-            imgElement.src = novaFotoUrl + '?t=' + new Date().getTime();
+            // Atualizar imagem no ecrã
+            // A resposta do backend traz { msg: "...", foto: "nome-da-foto.jpg" }
+            const novaFotoUrl = `${BASE_URL}/uploads/${data.foto}`;
+            imgElement.src = novaFotoUrl + '?t=' + new Date().getTime(); // Cache busting
             
-            // 2. Atualizar o localStorage para a próxima vez que entrares a foto já lá estar
-            user.foto = data.foto;
+            // Atualizar LocalStorage
+            user.foto = data.foto; // Guarda apenas o nome do ficheiro
             localStorage.setItem('user', JSON.stringify(user));
 
             alert('Foto atualizada com sucesso!');
         } else {
-            alert('Erro: ' + data.msg);
+            alert('Erro: ' + (data.msg || 'Erro desconhecido'));
         }
 
     } catch (error) {
         console.error(error);
-        alert('Erro ao enviar foto. Verifica se o servidor está ligado.');
+        alert('Erro ao ligar ao servidor.');
     } finally {
-        // Restaurar opacidade
         document.getElementById('imgPerfil').style.opacity = '1';
     }
 }

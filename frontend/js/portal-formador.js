@@ -1,5 +1,5 @@
 const API_URL = 'http://localhost:3000/api';
-const BASE_URL = 'http://localhost:3000';
+const BASE_URL = 'http://localhost:3000'; // URL base para imagens
 
 document.addEventListener("DOMContentLoaded", () => {
     const token = localStorage.getItem('token');
@@ -13,19 +13,22 @@ document.addEventListener("DOMContentLoaded", () => {
     try {
         const user = JSON.parse(userStr);
 
-        // SEGURANÇA: Se não for Formador, manda para o sítio certo
+        // Segurança de Roles
         if (user.role === 'Admin') window.location.href = 'dashboard.html';
         if (user.role === 'Formando') window.location.href = 'portal-aluno.html';
 
         // Preencher dados
         document.getElementById('nomeUser').textContent = user.nome || user.nome_completo;
-        document.getElementById('userEmail').textContent = user.email;
-        document.getElementById('userId').textContent = user.id || user.id_user;
-        document.getElementById('roleUser').textContent = user.role;
+        if(document.getElementById('userEmail')) document.getElementById('userEmail').textContent = user.email;
+        if(document.getElementById('userId')) document.getElementById('userId').textContent = user.id || user.id_user;
+        if(document.getElementById('roleUser')) document.getElementById('roleUser').textContent = user.role;
 
-        // Foto
+        // Foto de Perfil
         if (user.foto) {
-            document.getElementById('imgPerfil').src = `${BASE_URL}/${user.foto}`;
+             const fotoSrc = user.foto.startsWith('http') 
+                ? user.foto 
+                : `${BASE_URL}/uploads/${user.foto}`;
+            document.getElementById('imgPerfil').src = fotoSrc;
         }
 
     } catch (e) {
@@ -34,7 +37,9 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 });
 
-// A mesma função de upload (podes copiar do portal.js ou deixar num ficheiro utils.js partilhado)
+// ==========================================
+// FUNÇÃO DE UPLOAD CORRIGIDA (PUT)
+// ==========================================
 async function uploadFoto() {
     const input = document.getElementById('inputFoto');
     const file = input.files[0];
@@ -45,30 +50,39 @@ async function uploadFoto() {
     const token = localStorage.getItem('token');
     const userId = user.id || user.id_user;
 
+    // Criar FormData
     const formData = new FormData();
     formData.append('foto', file);
+    // Enviar dados essenciais para garantir que o PUT não apaga nada
+    formData.append('nome', user.nome || user.nome_completo);
+    formData.append('email', user.email);
 
     try {
         document.getElementById('imgPerfil').style.opacity = '0.5';
-        const res = await fetch(`${API_URL}/users/${userId}/foto`, {
-            method: 'POST',
+        
+        // CORREÇÃO: Usar PUT /users/:id
+        const res = await fetch(`${API_URL}/users/${userId}`, {
+            method: 'PUT',
             headers: { 'Authorization': 'Bearer ' + token },
             body: formData
         });
 
         const data = await res.json();
+        
         if (res.ok) {
-            const novaFotoUrl = `${BASE_URL}/${data.foto}`;
+            const novaFotoUrl = `${BASE_URL}/uploads/${data.foto}`;
             document.getElementById('imgPerfil').src = novaFotoUrl + '?t=' + new Date().getTime();
             
             user.foto = data.foto;
             localStorage.setItem('user', JSON.stringify(user));
+            
             alert('Foto atualizada!');
         } else {
-            alert('Erro: ' + data.msg);
+            alert('Erro: ' + (data.msg || 'Erro desconhecido'));
         }
     } catch (error) {
         console.error(error);
+        alert('Erro de conexão.');
     } finally {
         document.getElementById('imgPerfil').style.opacity = '1';
     }

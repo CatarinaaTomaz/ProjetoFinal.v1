@@ -1,67 +1,73 @@
-const { Modulo } = require('../models/associations');
+const { Modulo, User, Sala } = require('../models/associations');
 
-// Listar Módulos
 exports.listarModulos = async (req, res) => {
     try {
         const { cursoId } = req.query;
         const whereCondition = cursoId ? { cursoId } : {};
 
-        // Simplifiquei: Removi o 'include' que estava a causar conflito
         const modulos = await Modulo.findAll({
-            where: whereCondition
+            where: whereCondition,
+            // AQUI ESTÁ A MAGIA: Trazer os dados das tabelas relacionadas
+            include: [
+                { model: User, as: 'Formador', attributes: ['nome_completo'] },
+                { model: Sala, attributes: ['nome'] }
+            ]
         });
         
         res.json(modulos);
     } catch (error) {
-        // AGORA JÁ VAIS VER O ERRO NO TERMINAL SE ACONTECER
-        console.error("Erro crítico ao listar módulos:", error); 
+        console.error("Erro ao listar:", error);
         res.status(500).json({ msg: "Erro ao listar módulos." });
     }
 };
 
-// Criar Módulo
 exports.criarModulo = async (req, res) => {
     try {
-        const { nome, descricao, cursoId } = req.body;
+        // Receber formadorId e salaId (podem vir vazios/null)
+        const { nome, descricao, cursoId, formadorId, salaId } = req.body;
         
-        if (!cursoId) return res.status(400).json({ msg: "O curso é obrigatório!" });
+        if (!cursoId) return res.status(400).json({ msg: "Curso obrigatório!" });
 
-        await Modulo.create({ nome, descricao, cursoId });
-        res.status(201).json({ msg: "Módulo criado com sucesso!" });
+        // Converter string vazia "" para null se necessário
+        const fId = formadorId || null;
+        const sId = salaId || null;
+
+        await Modulo.create({ nome, descricao, cursoId, formadorId: fId, salaId: sId });
+        res.status(201).json({ msg: "Módulo criado!" });
     } catch (error) {
-        console.error("Erro ao criar:", error);
-        res.status(500).json({ msg: "Erro ao criar módulo." });
+        console.error(error);
+        res.status(500).json({ msg: "Erro ao criar." });
     }
 };
 
-// Atualizar Módulo
 exports.atualizarModulo = async (req, res) => {
     try {
         const { id } = req.params;
-        const { nome, descricao } = req.body;
+        const { nome, descricao, formadorId, salaId } = req.body;
 
         const modulo = await Modulo.findByPk(id);
-        if (!modulo) return res.status(404).json({ msg: "Módulo não encontrado" });
+        if (!modulo) return res.status(404).json({ msg: "Não encontrado" });
 
         modulo.nome = nome;
         modulo.descricao = descricao;
-        await modulo.save();
+        // Atualizar opcionais
+        modulo.formadorId = formadorId || null;
+        modulo.salaId = salaId || null;
 
-        res.json({ msg: "Módulo atualizado!" });
+        await modulo.save();
+        res.json({ msg: "Atualizado!" });
     } catch (error) {
-        console.error("Erro ao atualizar:", error);
+        console.error(error);
         res.status(500).json({ msg: "Erro ao atualizar." });
     }
 };
 
-// Eliminar Módulo
 exports.eliminarModulo = async (req, res) => {
     try {
         const { id } = req.params;
         await Modulo.destroy({ where: { id_modulo: id } });
-        res.json({ msg: "Módulo eliminado!" });
+        res.json({ msg: "Eliminado!" });
     } catch (error) {
-        console.error("Erro ao eliminar:", error);
         res.status(500).json({ msg: "Erro ao eliminar." });
     }
 };

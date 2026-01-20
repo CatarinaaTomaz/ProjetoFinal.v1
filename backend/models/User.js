@@ -58,6 +58,11 @@ const User = sequelize.define('User', {
         type: DataTypes.STRING,
         allowNull: true,
         defaultValue: null // Se não tiver foto, fica null
+    },
+    horas_lecionadas: {
+        type: DataTypes.INTEGER,
+        defaultValue: 0, // Começa com 0 horas
+        allowNull: false
     }
     }, {
     tableName: 'utilizadores',

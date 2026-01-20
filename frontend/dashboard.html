@@ -76,6 +76,12 @@
                     </div>
 
                     <div class="mb-3">
+                        <label class="form-label">Horas Lecionadas</label>
+                        <input type="number" class="form-control" id="editHoras" value="0" min="0">
+                        <div class="form-text">Apenas visível para Admins gerirem formadores.</div>
+                    </div>
+
+                    <div class="mb-3">
                         <label class="form-label">Perfil (Role)</label>
                         <select class="form-select" id="editRole">
                             <option value="1">Admin</option>
@@ -158,6 +164,20 @@
                     <div class="mb-3">
                         <label class="form-label">Descrição (Opcional)</label>
                         <textarea class="form-control" id="moduloDescricao" rows="3"></textarea>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Formador (Opcional)</label>
+                            <select class="form-select" id="moduloFormador">
+                                <option value="">-- Sem Formador --</option>
+                                </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Sala (Opcional)</label>
+                            <select class="form-select" id="moduloSala">
+                                <option value="">-- Sem Sala --</option>
+                                </select>
+                        </div>
                     </div>
                 </form>
             </div>

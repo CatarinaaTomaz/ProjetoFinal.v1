@@ -14,13 +14,18 @@ const Modulo = db.define('Modulo', {
     descricao: {
         type: DataTypes.TEXT,
         allowNull: true
-    },cursoId: {
+    },
+    cursoId: {
         type: DataTypes.INTEGER,
-        allowNull: false, // Um módulo tem de ter um curso
-        references: {
-            model: 'cursos', // Nome da tabela de cursos
-            key: 'id_curso'
-        }
+        allowNull: false
+    },
+    formadorId: {
+        type: DataTypes.INTEGER,
+        allowNull: true 
+    },
+    salaId: {
+        type: DataTypes.INTEGER,
+        allowNull: true 
     }
 }, {
     tableName: 'modulos',
