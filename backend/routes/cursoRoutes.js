@@ -13,4 +13,9 @@ router.post('/', cursoController.criarCurso);
 router.put('/:id', cursoController.atualizarCurso);
 router.delete('/:id', cursoController.eliminarCurso);
 
+// --- NOVAS ROTAS DE GESTÃO DE ALUNOS ---
+router.get('/:id/alunos', cursoController.listarAlunosCurso);   
+router.post('/:id/alunos', cursoController.adicionarAluno);          
+router.delete('/:id/alunos/:alunoId', cursoController.removerAluno); 
+
 module.exports = router;

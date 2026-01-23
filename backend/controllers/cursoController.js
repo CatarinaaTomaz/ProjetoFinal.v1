@@ -1,4 +1,4 @@
-const { Curso } = require('../models/associations');
+const { Curso, User } = require('../models/associations');
 
 exports.listarCursos = async (req, res) => {
     try {
@@ -66,5 +66,72 @@ exports.eliminarCurso = async (req, res) => {
         res.json({ msg: "Curso eliminado!" });
     } catch (error) {
         res.status(500).json({ msg: "Erro ao eliminar." });
+    }
+};
+
+// ==========================================
+// GESTÃO DE ALUNOS (MATRÍCULAS)
+// ==========================================
+
+// 1. Matricular Aluno (Secretaria/Admin)
+exports.adicionarAluno = async (req, res) => {
+    try {
+        const { id } = req.params;   // ID do Curso
+        const { userId } = req.body; // ID do Aluno
+
+        const curso = await Curso.findByPk(id);
+        const aluno = await User.findByPk(userId);
+
+        if (!curso || !aluno) return res.status(404).json({ msg: "Curso ou Aluno não encontrados" });
+
+        // O Sequelize usa a tua tabela 'Inscricao' automaticamente aqui
+        await curso.addUser(aluno);
+
+        res.json({ msg: "Aluno matriculado com sucesso!" });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ msg: "Erro ao matricular." });
+    }
+};
+
+// 2. Listar Alunos Inscritos no Curso
+exports.listarAlunosCurso = async (req, res) => {
+    try {
+        const { id } = req.params;
+        
+        // Busca o curso e traz os Users associados (via Inscricao)
+        const curso = await Curso.findByPk(id, {
+            include: [{
+                model: User,
+                attributes: ['id_user', 'nome_completo', 'email', 'foto', 'roleId'],
+                through: { attributes: [] } // Ignora dados da tabela de junção por agora
+            }]
+        });
+
+        if (!curso) return res.status(404).json({ msg: "Curso não encontrado" });
+
+        res.json(curso.Users); // Retorna a lista de alunos
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ msg: "Erro ao listar alunos." });
+    }
+};
+
+// 3. Remover Aluno do Curso
+exports.removerAluno = async (req, res) => {
+    try {
+        const { id, alunoId } = req.params;
+        
+        const curso = await Curso.findByPk(id);
+        const aluno = await User.findByPk(alunoId);
+
+        if (!curso || !aluno) return res.status(404).json({ msg: "Dados inválidos" });
+
+        await curso.removeUser(aluno); // Remove da tabela Inscricao
+        
+        res.json({ msg: "Matrícula anulada." });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ msg: "Erro ao remover aluno." });
     }
 };

@@ -237,11 +237,54 @@ function verificarArranquesProximos(cursos) {
 }
 
 function desenharTabelaCursos(lista) {
-    const t = document.getElementById('tabelaCursos'); if(!t)return; t.innerHTML='';
-    if(lista.length===0){t.innerHTML='<tr><td colspan="7">Nada.</td></tr>';return;}
-    lista.forEach(c=>{
-        const statusBadge = c.status ? '<span class="badge bg-success">Ativo</span>' : '<span class="badge bg-secondary">Inativo</span>';
-        t.innerHTML+=`<tr><td>#${c.id_curso}</td><td class="fw-bold">${c.nome}</td><td><span class="badge bg-secondary">${c.area}</span></td><td>${new Date(c.data_inicio).toLocaleDateString()}</td><td>${new Date(c.data_fim).toLocaleDateString()}</td><td>${statusBadge}</td><td><button class="btn btn-sm btn-warning text-white" onclick="abrirModalCurso(${c.id_curso},'${c.nome}','${c.area}','${c.data_inicio}','${c.data_fim}',${c.status})"><i class="fas fa-edit"></i></button> <button class="btn btn-sm btn-danger" onclick="eliminarCurso(${c.id_curso})"><i class="fas fa-trash"></i></button></td></tr>`;
+    const t = document.getElementById('tabelaCursos');
+    // Obter user atual para verificar permissões
+    const u = JSON.parse(localStorage.getItem('user'));
+    // Permissão: Admin OU Secretaria
+    const podeGerir = ['Admin', 'Secretaria'].includes(u.role);
+
+    if (!t) return;
+    t.innerHTML = '';
+
+    if (lista.length === 0) {
+        t.innerHTML = '<tr><td colspan="7" class="text-center text-muted">Nenhum curso encontrado.</td></tr>';
+        return;
+    }
+
+    lista.forEach(c => {
+        const inicio = new Date(c.data_inicio).toLocaleDateString('pt-PT');
+        const fim = new Date(c.data_fim).toLocaleDateString('pt-PT');
+        
+        const statusBadge = c.status 
+            ? '<span class="badge bg-success"><i class="fas fa-check-circle me-1"></i>A decorrer</span>' 
+            : '<span class="badge bg-secondary"><i class="fas fa-stop-circle me-1"></i>Inativo</span>';
+
+        // Botão de Gestão de Alunos (Só aparece se tiver permissão)
+        const btnAlunos = podeGerir 
+            ? `<button class="btn btn-sm btn-primary me-1" onclick="abrirGestaoAlunos(${c.id_curso}, '${c.nome}')" title="Gerir Alunos"><i class="fas fa-user-graduate"></i></button>`
+            : '';
+
+        // Botões de Editar/Apagar (Só Admin/Secretaria)
+        const botoesAdmin = podeGerir
+            ? `
+                <button class="btn btn-sm btn-warning text-white" onclick="abrirModalCurso(${c.id_curso}, '${c.nome}', '${c.area}', '${c.data_inicio}', '${c.data_fim}', ${c.status})"><i class="fas fa-edit"></i></button>
+                <button class="btn btn-sm btn-danger" onclick="eliminarCurso(${c.id_curso})"><i class="fas fa-trash"></i></button>
+              `
+            : '<i class="fas fa-lock text-muted"></i>';
+
+        t.innerHTML += `
+            <tr>
+                <td>#${c.id_curso}</td>
+                <td class="fw-bold">${c.nome}</td>
+                <td><span class="badge bg-secondary">${c.area}</span></td>
+                <td>${inicio}</td>
+                <td>${fim}</td>
+                <td>${statusBadge}</td>
+                <td>
+                    ${btnAlunos}
+                    ${botoesAdmin}
+                </td>
+            </tr>`;
     });
 }
 function filtrarCursos(){const v=document.getElementById('pesquisaCurso').value.toLowerCase();desenharTabelaCursos(todosCursos.filter(c=>c.nome.toLowerCase().includes(v)));}
@@ -324,7 +367,11 @@ async function preencherTabelaUtilizadores(){const t=localStorage.getItem('token
 function desenharTabelaUsers(l) {
     const t = document.getElementById('tabelaUsers');
     const u = JSON.parse(localStorage.getItem('user'));
-    const ia = u.role === 'Admin';
+
+    // --- ALTERAÇÃO AQUI ---
+    // Agora verificamos se é Admin OU Secretaria
+    // O método .includes verifica se a role do user está na lista de permitidos
+    const temPermissao = ['Admin', 'Secretaria'].includes(u.role);
     
     if (!t) return;
     t.innerHTML = '';
@@ -339,8 +386,8 @@ function desenharTabelaUsers(l) {
             ? `<img src="http://localhost:3000/uploads/${x.foto}" class="rounded-circle" width="30" height="30" style="object-fit:cover; margin-right:5px">`
             : `<div class="rounded-circle bg-secondary d-inline-flex justify-content-center align-items-center text-white" style="width:30px; height:30px; margin-right:5px">${x.nome_completo.charAt(0)}</div>`;
 
-        // BOTÕES DE AÇÃO
-        let a = ia 
+        // Se tiver permissão (Admin ou Secretaria), mostra os botões. Se não, mostra o cadeado.
+        let a = temPermissao 
             ? `
                 <button class="btn btn-sm btn-danger text-white me-1" onclick="gerarPDFUser(${x.id_user})" title="Exportar PDF"><i class="fas fa-file-pdf"></i></button>
                 <button class="btn btn-sm btn-warning text-white me-1" onclick="abrirModalUser(${x.id_user},'${x.nome_completo}','${x.email}',${x.Role ? x.Role.id_role : 2}, ${x.horas_lecionadas || 0})"><i class="fas fa-edit"></i></button> 
@@ -487,6 +534,106 @@ async function gerarPDFUser(id) {
         // Voltar a esconder o modelo
         elemento.style.display = 'none';
     }
+}
+
+// ==========================================
+// LÓGICA DE INSCRIÇÕES (SECRETARIA/ADMIN)
+// ==========================================
+let cursoSelecionadoId = null;
+
+async function abrirGestaoAlunos(idCurso, nomeCurso) {
+    cursoSelecionadoId = idCurso;
+    document.getElementById('lblNomeCursoTurma').innerText = nomeCurso;
+    
+    // 1. Carregar lista de alunos já inscritos
+    await carregarInscritos();
+    
+    // 2. Carregar lista de todos os formandos para o dropdown
+    await carregarDropdownFormandos();
+
+    new bootstrap.Modal(document.getElementById('modalInscricoes')).show();
+}
+
+async function carregarInscritos() {
+    const token = localStorage.getItem('token');
+    const tbody = document.getElementById('listaAlunosInscritos');
+    
+    const res = await fetch(`${API_URL}/cursos/${cursoSelecionadoId}/alunos`, {
+        headers: { 'Authorization': 'Bearer ' + token }
+    });
+    const alunos = await res.json();
+
+    tbody.innerHTML = '';
+    if (alunos.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-3">Ainda não há alunos nesta turma.</td></tr>';
+        return;
+    }
+
+    alunos.forEach(a => {
+        const fotoUrl = a.foto ? `http://localhost:3000/uploads/${a.foto}` : 'https://via.placeholder.com/40';
+        
+        tbody.innerHTML += `
+            <tr>
+                <td><img src="${fotoUrl}" class="rounded-circle" width="40" height="40" style="object-fit:cover"></td>
+                <td>${a.nome_completo}</td>
+                <td>${a.email}</td>
+                <td class="text-end">
+                    <button class="btn btn-sm btn-outline-danger" onclick="removerInscricao(${a.id_user})">
+                        <i class="fas fa-user-minus"></i>
+                    </button>
+                </td>
+            </tr>
+        `;
+    });
+}
+
+async function carregarDropdownFormandos() {
+    const sel = document.getElementById('selAlunoInscricao');
+    // Reutiliza a lista global se já existir, senão busca
+    if (todosUtilizadores.length === 0) await preencherTabelaUtilizadores();
+
+    sel.innerHTML = '<option value="">-- Selecionar Aluno --</option>';
+    
+    todosUtilizadores.forEach(u => {
+        // Filtra apenas Formandos (ou Alunos, conforme a tua Role)
+        if (u.Role && (u.Role.descricao === 'Formando' || u.Role.descricao === 'Aluno')) {
+            sel.innerHTML += `<option value="${u.id_user}">${u.nome_completo} (${u.email})</option>`;
+        }
+    });
+}
+
+async function guardarInscricao() {
+    const idAluno = document.getElementById('selAlunoInscricao').value;
+    if (!idAluno) return alert("Escolhe um aluno!");
+
+    const token = localStorage.getItem('token');
+    try {
+        const res = await fetch(`${API_URL}/cursos/${cursoSelecionadoId}/alunos`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+            body: JSON.stringify({ userId: idAluno })
+        });
+
+        if (res.ok) {
+            alert("Aluno matriculado!");
+            carregarInscritos(); // Atualiza a tabela
+        } else {
+            alert("Erro: O aluno já deve estar inscrito.");
+        }
+    } catch (e) { console.error(e); }
+}
+
+async function removerInscricao(idAluno) {
+    if(!confirm("Remover este aluno do curso?")) return;
+    const token = localStorage.getItem('token');
+    
+    try {
+        await fetch(`${API_URL}/cursos/${cursoSelecionadoId}/alunos/${idAluno}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': 'Bearer ' + token }
+        });
+        carregarInscritos();
+    } catch (e) { console.error(e); }
 }
 
 async function eliminarUser(id){if(confirm("Apagar?")){const t=localStorage.getItem('token');await fetch(`${API_URL}/users/${id}`,{method:'DELETE',headers:{'Authorization':'Bearer '+t}}).then(preencherTabelaUtilizadores);}}
