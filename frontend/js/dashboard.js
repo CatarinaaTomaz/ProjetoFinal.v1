@@ -321,35 +321,43 @@ async function eliminarModulo(id){if(confirm("Apagar?")){const t=localStorage.ge
 
 async function preencherTabelaUtilizadores(){const t=localStorage.getItem('token');const r=await fetch(`${API_URL}/users`,{headers:{'Authorization':'Bearer '+t}});todosUtilizadores=await r.json();desenharTabelaUsers(todosUtilizadores);}
 
-function desenharTabelaUsers(l){
-    const t=document.getElementById('tabelaUsers');
-    const u=JSON.parse(localStorage.getItem('user'));
-    const ia=u.role==='Admin';
-    if(!t)return;t.innerHTML='';
-    if(l.length===0){t.innerHTML='<tr><td colspan="7">Nada.</td></tr>';return;}
+function desenharTabelaUsers(l) {
+    const t = document.getElementById('tabelaUsers');
+    const u = JSON.parse(localStorage.getItem('user'));
+    const ia = u.role === 'Admin';
     
-    l.forEach(x=>{
-        // Lógica da Imagem: Se tiver foto, mostra. Se não, mostra ícone genérico.
-        // O caminho é http://localhost:3000/uploads/NOME_DO_FICHEIRO
+    if (!t) return;
+    t.innerHTML = '';
+    
+    if (l.length === 0) {
+        t.innerHTML = '<tr><td colspan="7">Nada.</td></tr>';
+        return;
+    }
+
+    l.forEach(x => {
         const imgHtml = x.foto 
             ? `<img src="http://localhost:3000/uploads/${x.foto}" class="rounded-circle" width="30" height="30" style="object-fit:cover; margin-right:5px">`
             : `<div class="rounded-circle bg-secondary d-inline-flex justify-content-center align-items-center text-white" style="width:30px; height:30px; margin-right:5px">${x.nome_completo.charAt(0)}</div>`;
 
-        let a=ia?`<button class="btn btn-sm btn-warning text-white" onclick="abrirModalUser(${x.id_user},'${x.nome_completo}','${x.email}',${x.Role?x.Role.id_role:2}, ${x.horas_lecionadas || 0})"><i class="fas fa-edit"></i></button> <button class="btn btn-sm btn-danger" onclick="eliminarUser(${x.id_user})"><i class="fas fa-trash"></i></button>`:`<i class="fas fa-lock text-muted"></i>`;
-        
-        t.innerHTML+=`
-        <tr>
-            <td>#${x.id_user}</td>
-            <td class="fw-bold d-flex align-items-center">
-                ${imgHtml} 
-                ${x.nome_completo}
-            </td>
-            <td>${x.email}</td>
-            <td><span class="badge bg-info text-dark">${x.Role?x.Role.descricao:'-'}</span></td>
-            <td class="text-center">${x.googleId?'<i class="fab fa-google text-danger"></i>':'<i class="fas fa-envelope text-secondary"></i>'}</td>
-            <td><span class="badge bg-${x.conta_ativa?'success':'danger'}">${x.conta_ativa?'Ativo':'Inativo'}</span></td>
-            <td>${a}</td>
-        </tr>`;
+        // BOTÕES DE AÇÃO
+        let a = ia 
+            ? `
+                <button class="btn btn-sm btn-danger text-white me-1" onclick="gerarPDFUser(${x.id_user})" title="Exportar PDF"><i class="fas fa-file-pdf"></i></button>
+                <button class="btn btn-sm btn-warning text-white me-1" onclick="abrirModalUser(${x.id_user},'${x.nome_completo}','${x.email}',${x.Role ? x.Role.id_role : 2}, ${x.horas_lecionadas || 0})"><i class="fas fa-edit"></i></button> 
+                <button class="btn btn-sm btn-outline-danger" onclick="eliminarUser(${x.id_user})"><i class="fas fa-trash"></i></button>
+              `
+            : `<i class="fas fa-lock text-muted"></i>`;
+
+        t.innerHTML += `
+            <tr>
+                <td>#${x.id_user}</td>
+                <td class="fw-bold d-flex align-items-center">${imgHtml} ${x.nome_completo}</td>
+                <td>${x.email}</td>
+                <td><span class="badge bg-info text-dark">${x.Role ? x.Role.descricao : '-'}</span></td>
+                <td class="text-center">${x.googleId ? '<i class="fab fa-google text-danger"></i>' : '<i class="fas fa-envelope text-secondary"></i>'}</td>
+                <td><span class="badge bg-${x.conta_ativa ? 'success' : 'danger'}">${x.conta_ativa ? 'Ativo' : 'Inativo'}</span></td>
+                <td>${a}</td>
+            </tr>`;
     });
 }
 
@@ -410,6 +418,75 @@ async function guardarEdicaoUser() {
             alert('Erro ao guardar.');
         }
     } catch (e) { console.error(e); }
+}
+
+
+// ==========================================
+// EXPORTAR PDF
+// ==========================================
+async function gerarPDFUser(id) {
+    // 1. Encontrar o user na lista carregada
+    const user = todosUtilizadores.find(u => u.id_user === id);
+    if (!user) return alert("Utilizador não encontrado.");
+
+    // 2. Preencher o Modelo HTML com os dados
+    document.getElementById('pdfNome').innerText = user.nome_completo;
+    document.getElementById('pdfId').innerText = user.id_user;
+    document.getElementById('pdfEmail').innerText = user.email;
+    document.getElementById('pdfRole').innerText = user.Role ? user.Role.descricao : 'Sem Perfil';
+    document.getElementById('pdfEstado').innerText = user.conta_ativa ? 'Ativo' : 'Inativo';
+    document.getElementById('pdfData').innerText = new Date().toLocaleString('pt-PT');
+
+    // Foto (se não tiver, usa uma genérica)
+    const imgElement = document.getElementById('pdfFoto');
+    if (user.foto) {
+        // Usa o proxy do CORS se necessário, ou caminho direto
+        imgElement.src = `http://localhost:3000/uploads/${user.foto}`;
+    } else {
+        // Imagem placeholder cinzenta
+        imgElement.src = 'https://via.placeholder.com/150?text=Sem+Foto';
+    }
+
+    // 3. Lógica Diferente para Formador vs Formando
+    const divExtra = document.getElementById('pdfDadosExtra');
+    
+    if (user.Role && user.Role.descricao === 'Formador') {
+        divExtra.innerHTML = `
+            <p><strong>Total Horas Lecionadas:</strong> ${user.horas_lecionadas || 0} horas</p>
+            <p>Este utilizador tem permissões para gerir avaliações e conteúdos de módulos.</p>
+        `;
+    } else if (user.Role && user.Role.descricao === 'Formando') {
+        divExtra.innerHTML = `
+            <p><strong>Curso Inscrito:</strong> ${user.curso || 'Não atribuído'}</p>
+            <p>O formando deve cumprir com os requisitos de assiduidade.</p>
+        `;
+    } else {
+        divExtra.innerHTML = `<p>Perfil Administrativo ou Secretaria.</p>`;
+    }
+
+    // 4. Configurar e Gerar o PDF
+    const elemento = document.getElementById('templatePDF');
+    
+    // Mostramos temporariamente para o html2pdf conseguir "ver" e fotografar
+    elemento.style.display = 'block'; 
+
+    const opt = {
+        margin:       0.5,
+        filename:     `Ficha_${user.nome_completo.replace(/\s+/g, '_')}.pdf`,
+        image:        { type: 'jpeg', quality: 0.98 },
+        html2canvas:  { scale: 2, useCORS: true }, // useCORS é vital para carregar a foto do servidor
+        jsPDF:        { unit: 'in', format: 'a4', orientation: 'portrait' }
+    };
+
+    try {
+        await html2pdf().set(opt).from(elemento).save();
+    } catch (error) {
+        console.error("Erro ao gerar PDF", error);
+        alert("Erro ao gerar PDF. Verifica a consola.");
+    } finally {
+        // Voltar a esconder o modelo
+        elemento.style.display = 'none';
+    }
 }
 
 async function eliminarUser(id){if(confirm("Apagar?")){const t=localStorage.getItem('token');await fetch(`${API_URL}/users/${id}`,{method:'DELETE',headers:{'Authorization':'Bearer '+t}}).then(preencherTabelaUtilizadores);}}

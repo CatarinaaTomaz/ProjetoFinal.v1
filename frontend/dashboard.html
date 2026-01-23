@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard - ATEC</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="css/dashboard.css">
@@ -223,6 +224,41 @@
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
                 <button type="button" class="btn btn-info" onclick="guardarSala()">Guardar</button>
             </div>
+        </div>
+    </div>
+</div>
+<div id="templatePDF" style="display: none;">
+    <div style="padding: 40px; font-family: Arial, sans-serif; border: 2px solid #333; max-width: 800px; margin: auto;">
+        
+        <div style="text-align: center; border-bottom: 2px solid #0056b3; padding-bottom: 20px; margin-bottom: 30px;">
+            <h1 style="color: #0056b3; margin: 0;">Ficha de Utilizador</h1>
+            <p style="color: #666; margin-top: 5px;">Sistema de Gestão ATEC</p>
+        </div>
+
+        <div style="display: flex; align-items: flex-start; gap: 30px;">
+            <div style="width: 150px; height: 150px; border: 1px solid #ddd; display: flex; align-items: center; justify-content: center; overflow: hidden; background: #f8f9fa;">
+                <img id="pdfFoto" src="" alt="Foto" style="width: 100%; height: 100%; object-fit: cover;">
+            </div>
+            
+            <div style="flex: 1;">
+                <h2 id="pdfNome" style="margin-top: 0; color: #333;">Nome do Utilizador</h2>
+                <p><strong>ID:</strong> #<span id="pdfId">--</span></p>
+                <p><strong>Email:</strong> <span id="pdfEmail">email@exemplo.com</span></p>
+                <p><strong>Perfil:</strong> <span id="pdfRole" style="background: #eee; padding: 2px 8px; border-radius: 4px;">--</span></p>
+                <p><strong>Estado da Conta:</strong> <span id="pdfEstado">--</span></p>
+            </div>
+        </div>
+
+        <hr style="margin: 30px 0; border: 0; border-top: 1px dashed #ccc;">
+
+        <div id="pdfExtraInfo" style="background-color: #f0f8ff; padding: 15px; border-radius: 8px; border-left: 5px solid #0056b3;">
+            <h3 style="margin-top: 0; font-size: 16px;">Informações Adicionais</h3>
+            <p id="pdfDadosExtra">Carregando...</p>
+        </div>
+
+        <div style="margin-top: 50px; text-align: center; font-size: 12px; color: #999; border-top: 1px solid #eee; padding-top: 10px;">
+            <p>Documento gerado automaticamente em <span id="pdfData"></span>.</p>
+            <p>ATEC - Academia de Formação</p>
         </div>
     </div>
 </div>
