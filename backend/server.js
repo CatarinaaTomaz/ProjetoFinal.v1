@@ -22,6 +22,8 @@ const cursoRoutes = require('./routes/cursoRoutes');
 const moduloRoutes = require('./routes/moduloRoutes');
 const salaRoutes = require('./routes/salaRoutes');
 const statsRoutes = require('./routes/statsRoutes');
+const horarioRoutes = require('./routes/horarioRoutes');
+const chatRoutes = require('./routes/chatRoutes');
 
 // Importar Modelos
 const { 
@@ -45,6 +47,8 @@ app.use('/api/cursos', cursoRoutes);
 app.use('/api/modulos', moduloRoutes);
 app.use('/api/salas', salaRoutes);
 app.use('/api/stats', statsRoutes);
+app.use('/api/horarios', horarioRoutes);
+app.use('/api/chat', chatRoutes);
 
 const PORT = process.env.PORT || 3000;
 

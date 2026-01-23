@@ -8,6 +8,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="css/dashboard.css">
+    <link rel="stylesheet" href="css/chat.css">
 </head>
 <body>
 
@@ -28,6 +29,9 @@
                 </a>
                 <a href="#" onclick="carregarConteudo('modulos')" class="list-group-item list-group-item-action bg-transparent second-text">
                     <i class="fas fa-cubes me-2"></i>Gestão Módulos
+                </a>
+                <a href="#" onclick="carregarConteudo('horarios')" class="list-group-item list-group-item-action bg-transparent second-text">
+                    <i class="fas fa-calendar-alt me-2"></i>Horários
                 </a>
                 <a href="#" onclick="carregarConteudo('utilizadores')" class="list-group-item list-group-item-action bg-transparent second-text">
                     <i class="fas fa-user-tie me-2"></i>Utilizadores
@@ -306,8 +310,74 @@
         </div>
     </div>
 </div>
+<div class="modal fade" id="modalHorario" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">Agendar Sala</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formHorario">
+                    <div class="mb-3">
+                        <label class="form-label">Data</label>
+                        <input type="date" class="form-control" id="hData" required>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-6">
+                            <label class="form-label">Início</label>
+                            <input type="time" class="form-control" id="hInicio" required>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label">Fim</label>
+                            <input type="time" class="form-control" id="hFim" required>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Sala</label>
+                        <select class="form-select" id="hSala"></select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Módulo (Turma)</label>
+                        <select class="form-select" id="hModulo"></select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="guardarHorario()">Agendar</button>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="chat-widget">
+    <button class="chat-button" onclick="toggleChat()">
+        <i class="fas fa-comments"></i>
+    </button>
+</div>
+
+<div class="chat-widget">
+    <button class="chat-button" onclick="toggleChat()">
+        <i class="fas fa-comments"></i>
+    </button>
+</div>
+
+<div class="chat-window" id="chatWindow">
+    <div class="chat-header">
+        <span><i class="fas fa-robot me-2"></i>Assistente ATEC</span>
+        <button onclick="toggleChat()" style="background:none; border:none; color:white;"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="chat-body" id="chatBody">
+        <div class="msg msg-bot">Olá! Sou o assistente virtual. Em que posso ajudar?</div>
+    </div>
+    <div class="chat-footer">
+        <input type="text" id="chatInput" class="form-control" placeholder="Escreve aqui..." onkeypress="if(event.key==='Enter') enviarMensagem()">
+        <button class="btn btn-primary" onclick="enviarMensagem()"><i class="fas fa-paper-plane"></i></button>
+    </div>
+</div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="js/dashboard.js"></script>
+    <script src="js/chat.js"></script>
 </body>
 </html>

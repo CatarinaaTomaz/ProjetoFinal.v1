@@ -1,26 +1,25 @@
 const { DataTypes } = require('sequelize');
-const sequelize = require('../config/db');
+const db = require('../config/db');
 
-const Horario = sequelize.define('Horario', {
+const Horario = db.define('Horario', {
     id_horario: {
         type: DataTypes.INTEGER,
         primaryKey: true,
         autoIncrement: true
     },
-    data: {
-        type: DataTypes.DATEONLY,
+    data_aula: {
+        type: DataTypes.DATEONLY, // Ex: 2024-05-20
         allowNull: false
     },
     hora_inicio: {
-        type: DataTypes.TIME,
+        type: DataTypes.TIME, // Ex: 09:00
         allowNull: false
     },
     hora_fim: {
-        type: DataTypes.TIME,
+        type: DataTypes.TIME, // Ex: 13:00
         allowNull: false
     }
-    // As chaves estrangeiras (Curso, Modulo, Sala, Formador) 
-    // serão criadas automaticamente no passo seguinte!
+    // As chaves estrangeiras (Sala, Módulo) são criadas no associations.js
 }, {
     tableName: 'horarios',
     timestamps: true

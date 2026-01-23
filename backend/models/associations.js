@@ -51,23 +51,12 @@ Turma.hasMany(UserTurma, { foreignKey: 'turmaId' });
 UserTurma.belongsTo(Turma, { foreignKey: 'turmaId' });
 
 // ==========================================================
-// 3. HORÁRIOS (O CORAÇÃO DO SISTEMA)
+// 3. HORÁRIOS 
 // ==========================================================
-// O Horário pertence a uma Turma
-Horario.belongsTo(Turma, { foreignKey: 'turmaId' });
-Turma.hasMany(Horario, { foreignKey: 'turmaId' });
-
-// O Horário é numa Sala
 Horario.belongsTo(Sala, { foreignKey: 'salaId' });
+Horario.belongsTo(Modulo, { foreignKey: 'moduloId' }); 
 Sala.hasMany(Horario, { foreignKey: 'salaId' });
-
-// O Horário é de um Módulo (Disciplina)
-Horario.belongsTo(Modulo, { foreignKey: 'moduloId' });
 Modulo.hasMany(Horario, { foreignKey: 'moduloId' });
-
-// O Horário tem um Formador (User)
-Horario.belongsTo(User, { as: 'Formador', foreignKey: 'formadorId' });
-User.hasMany(Horario, { foreignKey: 'formadorId' });
 
 // ==========================================================
 // 4. AVALIAÇÕES E MÓDULOS
