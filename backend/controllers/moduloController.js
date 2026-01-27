@@ -71,3 +71,33 @@ exports.eliminarModulo = async (req, res) => {
         res.status(500).json({ msg: "Erro ao eliminar." });
     }
 };
+
+// Listar módulos atribuídos a um Formador específico
+exports.listarModulosDoFormador = async (req, res) => {
+    try {
+        const { id } = req.params; 
+        const { Modulo, Curso, Sala } = require('../models/associations');
+
+        const modulos = await Modulo.findAll({
+            where: { formadorId: id },
+            include: [
+                { 
+                    model: Curso, 
+                    attributes: ['nome', 'area'],
+                    required: false // Traz o módulo mesmo que não tenha curso (para não dar erro)
+                },
+                // Traz o nome da Sala
+                { 
+                    model: Sala, 
+                    attributes: ['nome'],
+                    required: false
+                }
+            ]
+        });
+        
+        res.json(modulos);
+    } catch (error) {
+        console.error("Erro modulos formador:", error);
+        res.status(500).json({ msg: "Erro ao buscar módulos." });
+    }
+};

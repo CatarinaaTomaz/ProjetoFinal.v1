@@ -5,6 +5,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // 1. Verificar Token
     const token = localStorage.getItem('token');
     const userStr = localStorage.getItem('user');
+    carregarCursosDisponiveis();
 
     if (!token || !userStr) {
         window.location.href = 'login.html';
@@ -95,6 +96,68 @@ async function uploadFoto() {
         document.getElementById('imgPerfil').style.opacity = '1';
     }
 }
+
+async function carregarCursosDisponiveis() {
+    const user = JSON.parse(localStorage.getItem('user'));
+    const token = localStorage.getItem('token');
+    const tbody = document.getElementById('listaCursosCandidatura');
+    const userId = user.id || user.id_user;
+
+    // Se API_URL não estiver definida, usa a padrão (segurança)
+    const url = (typeof API_URL !== 'undefined' ? API_URL : 'http://localhost:3000/api');
+
+    const res = await fetch(`${url}/cursos/disponiveis/${userId}`, { headers: { 'Authorization': 'Bearer ' + token } });
+    const cursos = await res.json();
+
+    tbody.innerHTML = '';
+    if (cursos.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center">Sem cursos disponíveis.</td></tr>';
+        return;
+    }
+
+    cursos.forEach(c => {
+        let estadoHtml = '<span class="badge bg-light text-dark border">Não Inscrito</span>';
+        let btnHtml = `<button class="btn btn-sm btn-primary" onclick="candidatar(${c.id_curso})">Candidatar</button>`;
+
+        if (c.estado_inscricao === 'Aceite') {
+            estadoHtml = '<span class="badge bg-success">Inscrito</span>';
+            btnHtml = '<button class="btn btn-sm btn-outline-success" disabled><i class="fas fa-check"></i></button>';
+        } else if (c.estado_inscricao === 'Pendente') {
+            estadoHtml = '<span class="badge bg-warning text-dark">Pendente</span>';
+            btnHtml = '<button class="btn btn-sm btn-outline-secondary" disabled><i class="fas fa-clock"></i></button>';
+        } else if (c.estado_inscricao === 'Rejeitado') {
+             estadoHtml = '<span class="badge bg-danger">Rejeitado</span>';
+             btnHtml = `<button class="btn btn-sm btn-outline-danger" onclick="candidatar(${c.id_curso})">Reenviar</button>`;
+        }
+
+        tbody.innerHTML += `
+            <tr>
+                <td class="fw-bold">${c.nome}</td>
+                <td>${c.area}</td>
+                <td>${new Date(c.inicio).toLocaleDateString()}</td>
+                <td>${estadoHtml}</td>
+                <td>${btnHtml}</td>
+            </tr>`;
+    });
+}
+
+async function candidatar(cursoId) {
+    if(!confirm("Enviar candidatura?")) return;
+    const user = JSON.parse(localStorage.getItem('user'));
+    const token = localStorage.getItem('token');
+    const userId = user.id || user.id_user;
+    const url = (typeof API_URL !== 'undefined' ? API_URL : 'http://localhost:3000/api');
+
+    const res = await fetch(`${url}/cursos/candidatar`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+        body: JSON.stringify({ cursoId, userId })
+    });
+    
+    if(res.ok) { alert("Candidatura enviada!"); carregarCursosDisponiveis(); }
+    else { alert("Erro ao candidatar."); }
+}
+
 
 function logout() {
     localStorage.clear();

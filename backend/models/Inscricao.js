@@ -1,20 +1,21 @@
 const { DataTypes } = require('sequelize');
-const sequelize = require('../config/db');
+const db = require('../config/db');
 
-const Inscricao = sequelize.define('Inscricao', {
+const Inscricao = db.define('Inscricao', {
     id_inscricao: {
         type: DataTypes.INTEGER,
         primaryKey: true,
         autoIncrement: true
     },
-    data_inscricao: {
-        type: DataTypes.DATEONLY,
-        defaultValue: DataTypes.NOW
-    },
     estado: {
-        type: DataTypes.ENUM('Ativo', 'Concluido', 'Desistiu'),
-        defaultValue: 'Ativo'
+        type: DataTypes.STRING,
+        defaultValue: 'Pendente', // Começa sempre como Pendente
+        allowNull: false
+        // Valores possíveis: 'Pendente', 'Aceite', 'Rejeitado'
     }
-}, { tableName: 'inscricoes', timestamps: false });
+}, {
+    tableName: 'inscricoes',
+    timestamps: true
+});
 
 module.exports = Inscricao;

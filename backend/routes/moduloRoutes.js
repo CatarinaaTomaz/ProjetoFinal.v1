@@ -7,5 +7,6 @@ router.get('/', moduloController.listarModulos);
 router.post('/', moduloController.criarModulo);
 router.put('/:id', moduloController.atualizarModulo);
 router.delete('/:id', moduloController.eliminarModulo);
+router.get('/formador/:id', moduloController.listarModulosDoFormador);
 
 module.exports = router;

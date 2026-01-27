@@ -135,6 +135,26 @@ async function carregarConteudo(tipo) {
             <div class="card shadow-sm border-0"><div class="card-body"><div class="table-responsive"><table class="table table-hover align-middle"><thead class="table-dark"><tr><th>ID</th><th>Nome</th><th>Tipo</th><th>Capacidade</th><th>Ações</th></tr></thead><tbody id="tabelaSalas"><tr><td colspan="5" class="text-center">A carregar...</td></tr></tbody></table></div></div></div>`;
         await preencherTabelaSalas();
     }
+
+    // --- CANDIDATURAS ---
+    else if (tipo === 'candidaturas') {
+        titulo.innerText = 'Gestão de Candidaturas';
+        conteudo.innerHTML = `
+            <div class="alert alert-info shadow-sm"><i class="fas fa-info-circle me-2"></i>Aprova ou rejeita as inscrições nos cursos.</div>
+            <div class="card shadow-sm border-0">
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead class="table-dark">
+                                <tr><th>Foto</th><th>Nome</th><th>Curso</th><th>Estado</th><th class="text-end">Decisão</th></tr>
+                            </thead>
+                            <tbody id="tabelaCandidaturas"><tr><td colspan="5" class="text-center">A carregar...</td></tr></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>`;
+        listarCandidaturas();
+    }
 }
 
 // ==========================================
@@ -485,18 +505,70 @@ async function enviarMensagem() {
 async function preencherTabelaUtilizadores(){const t=localStorage.getItem('token');const r=await fetch(`${API_URL}/users`,{headers:{'Authorization':'Bearer '+t}});todosUtilizadores=await r.json();desenharTabelaUsers(todosUtilizadores);}
 function desenharTabelaUsers(l) {
     const t = document.getElementById('tabelaUsers');
+    
+    // Obter dados do utilizador logado para verificar permissões
     const u = JSON.parse(localStorage.getItem('user'));
-    const temPermissao = ['Admin', 'Secretaria'].includes(u.role);
-    if (!t) return; t.innerHTML = '';
-    if (l.length === 0) { t.innerHTML = '<tr><td colspan="7">Nada.</td></tr>'; return; }
+    
+    // Definir quem é quem
+    const isAdmin = u.role === 'Admin';
+    const isSecretaria = u.role === 'Secretaria';
+
+    if (!t) return;
+    t.innerHTML = '';
+    
+    if (l.length === 0) {
+        t.innerHTML = '<tr><td colspan="7" class="text-center">Nada a apresentar.</td></tr>';
+        return;
+    }
+
     l.forEach(x => {
-        const imgHtml = x.foto ? `<img src="http://localhost:3000/uploads/${x.foto}" class="rounded-circle" width="30" height="30" style="object-fit:cover; margin-right:5px">` : `<div class="rounded-circle bg-secondary d-inline-flex justify-content-center align-items-center text-white" style="width:30px; height:30px; margin-right:5px">${x.nome_completo.charAt(0)}</div>`;
-        let a = temPermissao ? `<button class="btn btn-sm btn-danger text-white me-1" onclick="gerarPDFUser(${x.id_user})"><i class="fas fa-file-pdf"></i></button> <button class="btn btn-sm btn-warning text-white me-1" onclick="abrirModalUser(${x.id_user},'${x.nome_completo}','${x.email}',${x.Role ? x.Role.id_role : 2}, ${x.horas_lecionadas || 0})"><i class="fas fa-edit"></i></button> <button class="btn btn-sm btn-outline-danger" onclick="eliminarUser(${x.id_user})"><i class="fas fa-trash"></i></button>` : `<i class="fas fa-lock text-muted"></i>`;
-        t.innerHTML += `<tr><td>#${x.id_user}</td><td class="fw-bold d-flex align-items-center">${imgHtml} ${x.nome_completo}</td><td>${x.email}</td><td><span class="badge bg-info text-dark">${x.Role ? x.Role.descricao : '-'}</span></td><td class="text-center">${x.googleId ? '<i class="fab fa-google text-danger"></i>' : '<i class="fas fa-envelope text-secondary"></i>'}</td><td><span class="badge bg-${x.conta_ativa ? 'success' : 'danger'}">${x.conta_ativa ? 'Ativo' : 'Inativo'}</span></td><td>${a}</td></tr>`;
+        // Lógica da Foto
+        const imgHtml = x.foto 
+            ? `<img src="http://localhost:3000/uploads/${x.foto}" class="rounded-circle" width="30" height="30" style="object-fit:cover; margin-right:5px">`
+            : `<div class="rounded-circle bg-secondary d-inline-flex justify-content-center align-items-center text-white" style="width:30px; height:30px; margin-right:5px">${x.nome_completo.charAt(0)}</div>`;
+
+        // Lógica dos Botões (Níveis de Acesso)
+        let botoesAcao = '';
+
+        if (isAdmin) {
+            // NÍVEL 1: ADMIN (Pode tudo)
+            botoesAcao = `
+                <button class="btn btn-sm btn-danger text-white me-1" onclick="gerarPDFUser(${x.id_user})" title="Exportar PDF"><i class="fas fa-file-pdf"></i></button>
+                <button class="btn btn-sm btn-warning text-white me-1" onclick="abrirModalUser(${x.id_user},'${x.nome_completo}','${x.email}',${x.Role ? x.Role.id_role : 2}, ${x.horas_lecionadas || 0})"><i class="fas fa-edit"></i></button> 
+                <button class="btn btn-sm btn-outline-danger" onclick="eliminarUser(${x.id_user})"><i class="fas fa-trash"></i></button>
+            `;
+        } else if (isSecretaria) {
+            // NÍVEL 2: SECRETARIA (Só PDF)
+            botoesAcao = `
+                <button class="btn btn-sm btn-danger text-white me-1" onclick="gerarPDFUser(${x.id_user})" title="Exportar PDF"><i class="fas fa-file-pdf"></i></button>
+            `;
+        } else {
+            // NÍVEL 3: SEM ACESSO
+            botoesAcao = `<i class="fas fa-lock text-muted" title="Sem permissões"></i>`;
+        }
+
+        // Desenhar a linha
+        t.innerHTML += `
+            <tr>
+                <td>#${x.id_user}</td>
+                <td class="fw-bold d-flex align-items-center">
+                    ${imgHtml} 
+                    ${x.nome_completo}
+                </td>
+                <td>${x.email}</td>
+                <td><span class="badge bg-info text-dark">${x.Role ? x.Role.descricao : '-'}</span></td>
+                <td class="text-center">${x.googleId ? '<i class="fab fa-google text-danger"></i>' : '<i class="fas fa-envelope text-secondary"></i>'}</td>
+                <td><span class="badge bg-${x.conta_ativa ? 'success' : 'danger'}">${x.conta_ativa ? 'Ativo' : 'Inativo'}</span></td>
+                <td>
+                    ${botoesAcao}
+                </td>
+            </tr>`;
     });
 }
+
 function filtrarUtilizadores(){const v=document.getElementById('pesquisaUser').value.toLowerCase();desenharTabelaUsers(todosUtilizadores.filter(u=>u.nome_completo.toLowerCase().includes(v)||u.email.toLowerCase().includes(v)));}
 function abrirModalUser(id,n,e,r,h=0){document.getElementById('editId').value=id;document.getElementById('editNome').value=n;document.getElementById('editEmail').value=e;document.getElementById('editRole').value=r;const campoHoras = document.getElementById('editHoras');if(campoHoras) campoHoras.value = h;new bootstrap.Modal(document.getElementById('modalEditarUser')).show();}
+
 async function guardarEdicaoUser() {
     const id = document.getElementById('editId').value;
     const nome = document.getElementById('editNome').value;
@@ -513,6 +585,7 @@ async function guardarEdicaoUser() {
         if (res.ok) { alert('Guardado!'); bootstrap.Modal.getInstance(document.getElementById('modalEditarUser')).hide(); preencherTabelaUtilizadores(); } else { alert('Erro ao guardar.'); }
     } catch (e) { console.error(e); }
 }
+
 async function gerarPDFUser(id) {
     const user = todosUtilizadores.find(u => u.id_user === id);
     if (!user) return alert("Utilizador não encontrado.");
@@ -526,6 +599,55 @@ async function gerarPDFUser(id) {
     const elemento = document.getElementById('templatePDF'); elemento.style.display = 'block'; 
     const opt = { margin: 0.5, filename: `Ficha_${user.nome_completo.replace(/\s+/g, '_')}.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true }, jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' } };
     try { await html2pdf().set(opt).from(elemento).save(); } catch (error) { console.error("Erro ao gerar PDF", error); } finally { elemento.style.display = 'none'; }
+}
+
+// ==========================================
+// GESTÃO DE CANDIDATURAS (ADMIN)
+// ==========================================
+async function listarCandidaturas() {
+    const token = localStorage.getItem('token');
+    const t = document.getElementById('tabelaCandidaturas');
+    
+    const res = await fetch(`${API_URL}/cursos/candidaturas/pendentes`, { headers: { 'Authorization': 'Bearer ' + token } });
+    const lista = await res.json();
+    
+    t.innerHTML = '';
+    if (lista.length === 0) {
+        t.innerHTML = '<tr><td colspan="5" class="text-center text-muted p-4">Não há candidaturas pendentes.</td></tr>';
+        return;
+    }
+
+    lista.forEach(c => {
+        const user = c.User;
+        const curso = c.Curso;
+        const foto = user.foto ? `http://localhost:3000/uploads/${user.foto}` : 'https://via.placeholder.com/40';
+
+        t.innerHTML += `
+            <tr>
+                <td><img src="${foto}" class="rounded-circle" width="40" height="40"></td>
+                <td class="fw-bold">${user.nome_completo}<br><small class="text-muted">${user.email}</small></td>
+                <td><span class="badge bg-primary">${curso.nome}</span></td>
+                <td><span class="badge bg-warning text-dark">Pendente</span></td>
+                <td class="text-end">
+                    <button class="btn btn-sm btn-success me-1" onclick="decidirCandidatura(${c.id_inscricao}, 'Aceite')"><i class="fas fa-check"></i> Aceitar</button>
+                    <button class="btn btn-sm btn-danger" onclick="decidirCandidatura(${c.id_inscricao}, 'Rejeitado')"><i class="fas fa-times"></i> Rejeitar</button>
+                </td>
+            </tr>
+        `;
+    });
+}
+
+async function decidirCandidatura(id, decisao) {
+    if(!confirm(`Tens a certeza que queres marcar como ${decisao}?`)) return;
+    const token = localStorage.getItem('token');
+    
+    await fetch(`${API_URL}/cursos/candidaturas/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+        body: JSON.stringify({ decisao })
+    });
+    
+    listarCandidaturas();
 }
 async function eliminarUser(id){if(confirm("Apagar?")){const t=localStorage.getItem('token');await fetch(`${API_URL}/users/${id}`,{method:'DELETE',headers:{'Authorization':'Bearer '+t}}).then(preencherTabelaUtilizadores);}}
 async function preencherTabelaSalas(){const t=localStorage.getItem('token');const r=await fetch(`${API_URL}/salas`,{headers:{'Authorization':'Bearer '+t}});todasSalas=await r.json();desenharTabelaSalas(todasSalas);}

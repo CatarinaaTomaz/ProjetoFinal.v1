@@ -61,9 +61,9 @@ Modulo.hasMany(Horario, { foreignKey: 'moduloId' });
 // ==========================================================
 // 4. AVALIAÇÕES E MÓDULOS
 // ==========================================================
-// Os Módulos pertencem aos Cursos (N:N)
-Curso.belongsToMany(Modulo, { through: 'CursoModulos' });
-Modulo.belongsToMany(Curso, { through: 'CursoModulos' });
+
+Curso.hasMany(Modulo, { foreignKey: 'cursoId', onDelete: 'CASCADE' });
+Modulo.belongsTo(Curso, { foreignKey: 'cursoId' }); 
 
 // Avaliações (Ligam diretamente o Aluno ao Módulo, sem passar por Inscrição/Curso)
 Avaliacao.belongsTo(User, { foreignKey: 'userId' });

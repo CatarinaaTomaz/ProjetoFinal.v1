@@ -4,6 +4,7 @@ const BASE_URL = 'http://localhost:3000'; // URL base para imagens
 document.addEventListener("DOMContentLoaded", () => {
     const token = localStorage.getItem('token');
     const userStr = localStorage.getItem('user');
+    carregarMeusModulos();
 
     if (!token || !userStr) {
         window.location.href = 'login.html';
@@ -86,6 +87,39 @@ async function uploadFoto() {
     } finally {
         document.getElementById('imgPerfil').style.opacity = '1';
     }
+}
+
+async function carregarMeusModulos() {
+    const user = JSON.parse(localStorage.getItem('user'));
+    const token = localStorage.getItem('token');
+    const tbody = document.getElementById('listaMeusModulos');
+    const userId = user.id || user.id_user;
+    const url = (typeof API_URL !== 'undefined' ? API_URL : 'http://localhost:3000/api');
+
+    // Chama a rota nova que criámos no Passo 1
+    const res = await fetch(`${url}/modulos/formador/${userId}`, { 
+        headers: { 'Authorization': 'Bearer ' + token } 
+    });
+    const modulos = await res.json();
+
+    tbody.innerHTML = '';
+    if (modulos.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" class="text-center p-4 text-muted">Ainda não tens módulos atribuídos.</td></tr>';
+        return;
+    }
+
+    modulos.forEach(m => {
+        const nomeCurso = m.Curso ? m.Curso.nome : '<span class="text-danger">Sem Curso</span>';
+        const nomeSala = m.Sala ? `<span class="badge bg-info text-dark">${m.Sala.nome}</span>` : '<span class="badge bg-secondary">Sem Sala</span>';
+        
+        tbody.innerHTML += `
+            <tr>
+                <td class="fw-bold text-primary">${m.nome}</td>
+                <td>${nomeCurso}</td>
+                <td>${nomeSala}</td>
+                <td>${m.descricao || '-'}</td>
+            </tr>`;
+    });
 }
 
 function logout() {

@@ -18,4 +18,10 @@ router.get('/:id/alunos', cursoController.listarAlunosCurso);
 router.post('/:id/alunos', cursoController.adicionarAluno);          
 router.delete('/:id/alunos/:alunoId', cursoController.removerAluno); 
 
+// ROTAS DE CANDIDATURAS 
+router.get('/candidaturas/pendentes', cursoController.listarCandidaturasPendentes); // Admin vê lista
+router.put('/candidaturas/:id', cursoController.gerirCandidatura); // Admin decide
+router.post('/candidatar', cursoController.candidatar); // User candidata-se
+router.get('/disponiveis/:userId', cursoController.listarCursosParaCandidatura); // User vê cursos
+
 module.exports = router;
