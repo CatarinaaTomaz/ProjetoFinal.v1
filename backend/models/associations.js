@@ -96,11 +96,8 @@ Falta.belongsTo(Horario, { foreignKey: 'horarioId' });
 Horario.hasMany(Falta, { foreignKey: 'horarioId' });
 
 // Disponibilidade (Formador ou Sala)
-Disponibilidade.belongsTo(User, { foreignKey: 'userId' });
-User.hasMany(Disponibilidade, { foreignKey: 'userId' });
-
-Disponibilidade.belongsTo(Sala, { foreignKey: 'salaId' });
-Sala.hasMany(Disponibilidade, { foreignKey: 'salaId' });
+User.hasMany(Disponibilidade, { foreignKey: 'formadorId' });
+Disponibilidade.belongsTo(User, { foreignKey: 'formadorId' });
 
 // ==========================================================
 // 6. EXPORTAR TUDO

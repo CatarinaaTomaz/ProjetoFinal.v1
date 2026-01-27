@@ -26,6 +26,9 @@ const Modulo = db.define('Modulo', {
     salaId: {
         type: DataTypes.INTEGER,
         allowNull: true 
+    },
+    duracao_total: { 
+        type: DataTypes.INTEGER, defaultValue: 50 
     }
 }, {
     tableName: 'modulos',

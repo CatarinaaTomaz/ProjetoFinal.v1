@@ -79,17 +79,34 @@ async function carregarConteudo(tipo) {
     else if (tipo === 'horarios') {
         titulo.innerText = 'Mapa de Aulas';
         conteudo.innerHTML = `
-            <div class="d-flex justify-content-between mb-3">
-                <button class="btn btn-primary" onclick="abrirModalHorario()"><i class="fas fa-plus me-2"></i>Agendar Sala</button>
+    <div class="card p-3 mb-3 shadow-sm">
+        <div class="row g-2">
+            <div class="col-md-3">
+                <label>Filtrar por Curso</label>
+                <select id="filtroCurso" class="form-select" onchange="listarHorarios()"></select>
             </div>
-            <div class="card shadow-sm border-0">
-                <div class="card-body">
-                    <table class="table table-hover">
-                        <thead class="table-dark"><tr><th>Data</th><th>Horas</th><th>Sala</th><th>Módulo / Curso</th><th>Ações</th></tr></thead>
-                        <tbody id="tabelaHorarios"><tr><td colspan="5">A carregar...</td></tr></tbody>
-                    </table>
-                </div>
-            </div>`;
+            <div class="col-md-3">
+                <label>Filtrar por Formador</label>
+                <select id="filtroFormador" class="form-select" onchange="listarHorarios()"></select>
+            </div>
+            <div class="col-md-3">
+                <label>Data Início</label>
+                <input type="date" id="filtroDataInicio" class="form-control" onchange="listarHorarios()">
+            </div>
+             <div class="col-md-3 d-flex align-items-end">
+                <button class="btn btn-primary w-100" onclick="abrirModalHorario()"><i class="fas fa-plus"></i> Novo</button>
+            </div>
+        </div>
+    </div>
+    <div class="card shadow-sm border-0">
+        <div class="card-body">
+            <table class="table table-hover">
+                <thead class="table-dark"><tr><th>Data</th><th>Horas</th><th>Sala</th><th>Módulo / Formador</th><th>Ações</th></tr></thead>
+                <tbody id="tabelaHorarios"><tr><td colspan="5">A carregar...</td></tr></tbody>
+            </table>
+        </div>
+    </div>`;
+    await carregarFiltrosHorario(); 
         listarHorarios();
     }
 
@@ -357,35 +374,79 @@ async function eliminarModulo(id){if(confirm("Apagar?")){const t=localStorage.ge
 // ==========================================
 // HORÁRIOS
 // ==========================================
+// ==========================================
+// LISTAR HORÁRIOS (COM FILTROS)
+// ==========================================
 async function listarHorarios() {
-    const token = localStorage.getItem('token');
-    const res = await fetch(`${API_URL}/horarios`, { headers: { 'Authorization': 'Bearer ' + token } });
-    const lista = await res.json();
-    
-    const t = document.getElementById('tabelaHorarios');
-    t.innerHTML = '';
-    
-    if (lista.length === 0) {
-        t.innerHTML = '<tr><td colspan="5" class="text-center">Sem agendamentos.</td></tr>';
-        return;
-    }
+    // 1. Tentar obter os valores dos filtros
+    // Usamos verificação (el ? el.value : '') para não dar erro se o elemento ainda não existir
+    const elCurso = document.getElementById('filtroCurso');
+    const elFormador = document.getElementById('filtroFormador');
+    const elData = document.getElementById('filtroDataInicio');
 
-    lista.forEach(h => {
-        t.innerHTML += `
-            <tr>
-                <td>${new Date(h.data_aula).toLocaleDateString('pt-PT')}</td>
-                <td><span class="badge bg-light text-dark border">${h.hora_inicio.slice(0,5)} - ${h.hora_fim.slice(0,5)}</span></td>
-                <td class="fw-bold text-primary">${h.Sala ? h.Sala.nome : 'Sala Apagada'}</td>
-                <td>
-                    <strong>${h.Modulo ? h.Modulo.nome : '?'}</strong><br>
-                    <small class="text-muted">${h.Modulo && h.Modulo.Curso ? h.Modulo.Curso.nome : ''}</small>
-                </td>
-                <td>
-                    <button class="btn btn-sm btn-danger" onclick="eliminarHorario(${h.id_horario})"><i class="fas fa-trash"></i></button>
-                </td>
-            </tr>
-        `;
-    });
+    const cursoId = elCurso ? elCurso.value : '';
+    const formadorId = elFormador ? elFormador.value : '';
+    const dInicio = elData ? elData.value : '';
+    
+    // 2. Construir o URL com os parâmetros de pesquisa
+    let url = `${API_URL}/horarios?`;
+    if(cursoId) url += `cursoId=${cursoId}&`;
+    if(formadorId) url += `formadorId=${formadorId}&`;
+    if(dInicio) url += `dataInicio=${dInicio}&dataFim=2099-12-31`; // Filtra dessa data para a frente
+
+    try {
+        const token = localStorage.getItem('token');
+        const res = await fetch(url, { 
+            headers: { 'Authorization': 'Bearer ' + token } 
+        });
+        const lista = await res.json();
+        
+        const t = document.getElementById('tabelaHorarios');
+        if (!t) return; // Segurança
+        t.innerHTML = '';
+        
+        // 3. Verificar se a lista está vazia
+        if (lista.length === 0) {
+            t.innerHTML = '<tr><td colspan="5" class="text-center text-muted p-3">Nenhum horário encontrado com estes filtros.</td></tr>';
+            return;
+        }
+
+        // 4. Desenhar as linhas da tabela
+        lista.forEach(h => {
+            // Formatação de segurança caso a Sala ou Módulo tenham sido apagados
+            const nomeSala = h.Sala ? h.Sala.nome : '<span class="text-danger">Sala Removida</span>';
+            const nomeModulo = h.Modulo ? h.Modulo.nome : '<span class="text-danger">Módulo Removido</span>';
+            const nomeFormador = (h.Modulo && h.Modulo.Formador) ? h.Modulo.Formador.nome_completo : 'Sem Formador';
+            const nomeCurso = (h.Modulo && h.Modulo.Curso) ? h.Modulo.Curso.nome : '-';
+
+            t.innerHTML += `
+                <tr>
+                    <td>${new Date(h.data_aula).toLocaleDateString('pt-PT')}</td>
+                    <td>
+                        <span class="badge bg-light text-dark border">
+                            <i class="far fa-clock me-1"></i>
+                            ${h.hora_inicio.slice(0,5)} - ${h.hora_fim.slice(0,5)}
+                        </span>
+                    </td>
+                    <td class="fw-bold text-primary">${nomeSala}</td>
+                    <td>
+                        <strong>${nomeModulo}</strong> <small class="text-muted">(${nomeCurso})</small><br>
+                        <small><i class="fas fa-user-tie me-1"></i>${nomeFormador}</small>
+                    </td>
+                    <td>
+                        <button class="btn btn-sm btn-danger" onclick="eliminarHorario(${h.id_horario})" title="Desmarcar Aula">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            `;
+        });
+
+    } catch (error) {
+        console.error("Erro ao listar horários:", error);
+        const t = document.getElementById('tabelaHorarios');
+        if(t) t.innerHTML = '<tr><td colspan="5" class="text-center text-danger">Erro ao carregar dados.</td></tr>';
+    }
 }
 
 async function abrirModalHorario() {
@@ -649,6 +710,43 @@ async function decidirCandidatura(id, decisao) {
     
     listarCandidaturas();
 }
+
+// Função para encher os dropdowns de filtro (Cursos e Formadores)
+async function carregarFiltrosHorario() {
+    const token = localStorage.getItem('token');
+    
+    // 1. Preencher Select de Cursos
+    const selCurso = document.getElementById('filtroCurso');
+    if (selCurso) {
+        try {
+            const res = await fetch(`${API_URL}/cursos`, { headers: { 'Authorization': 'Bearer ' + token } });
+            const cursos = await res.json();
+            
+            selCurso.innerHTML = '<option value="">Todos os Cursos</option>';
+            cursos.forEach(c => {
+                selCurso.innerHTML += `<option value="${c.id_curso}">${c.nome}</option>`;
+            });
+        } catch (e) { console.error("Erro ao carregar cursos para filtro:", e); }
+    }
+
+    // 2. Preencher Select de Formadores
+    const selFormador = document.getElementById('filtroFormador');
+    if (selFormador) {
+        try {
+            const res = await fetch(`${API_URL}/users`, { headers: { 'Authorization': 'Bearer ' + token } });
+            const users = await res.json();
+            
+            selFormador.innerHTML = '<option value="">Todos os Formadores</option>';
+            users.forEach(u => {
+                // Filtra apenas quem tem a role 'Formador'
+                if (u.Role && u.Role.descricao === 'Formador') {
+                    selFormador.innerHTML += `<option value="${u.id_user}">${u.nome_completo}</option>`;
+                }
+            });
+        } catch (e) { console.error("Erro ao carregar formadores para filtro:", e); }
+    }
+}
+
 async function eliminarUser(id){if(confirm("Apagar?")){const t=localStorage.getItem('token');await fetch(`${API_URL}/users/${id}`,{method:'DELETE',headers:{'Authorization':'Bearer '+t}}).then(preencherTabelaUtilizadores);}}
 async function preencherTabelaSalas(){const t=localStorage.getItem('token');const r=await fetch(`${API_URL}/salas`,{headers:{'Authorization':'Bearer '+t}});todasSalas=await r.json();desenharTabelaSalas(todasSalas);}
 function desenharTabelaSalas(l){const t=document.getElementById('tabelaSalas');if(!t)return;t.innerHTML='';if(l.length===0){t.innerHTML='<tr><td colspan="5">Nada.</td></tr>';return;}l.forEach(s=>{t.innerHTML+=`<tr><td>#${s.id_sala}</td><td class="fw-bold">${s.nome}</td><td><span class="badge bg-secondary">${s.tipo}</span></td><td>${s.capacidade} pax</td><td><button class="btn btn-sm btn-warning text-white" onclick="abrirModalSala(${s.id_sala},'${s.nome}','${s.tipo}',${s.capacidade})"><i class="fas fa-edit"></i></button> <button class="btn btn-sm btn-danger" onclick="eliminarSala(${s.id_sala})"><i class="fas fa-trash"></i></button></td></tr>`;});}

@@ -78,6 +78,33 @@
             </div>
         </div>
     </div>
+    <div class="card shadow-sm mt-4">
+    <div class="card shadow-sm mt-4">
+    <div class="card-header bg-success text-white fw-bold">
+        <i class="fas fa-clock me-2"></i>A Minha Disponibilidade
+    </div>
+    <div class="card-body">
+        <div class="row g-2 align-items-end">
+            <div class="col-md-5">
+                <label>Início</label>
+                <input type="datetime-local" id="dispInicio" class="form-control">
+            </div>
+            <div class="col-md-5">
+                <label>Fim</label>
+                <input type="datetime-local" id="dispFim" class="form-control">
+            </div>
+            <div class="col-md-2">
+                <button class="btn btn-outline-success w-100" onclick="adicionarDisponibilidade()">Adicionar</button>
+            </div>
+        </div>
+        <hr>
+        
+        <ul id="listaDisponibilidade" class="list-group list-group-flush">
+            </ul>
+        
+    </div>
+</div>
+</div>
     <div class="row mt-4">
     <div class="col-12">
         <div class="card shadow-sm">
