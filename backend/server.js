@@ -25,6 +25,7 @@ const statsRoutes = require('./routes/statsRoutes');
 const chatRoutes = require('./routes/chatRoutes');
 const horarioRoutes = require('./routes/horarioRoutes');
 const disponibilidadeRoutes = require('./routes/disponibilidadeRoutes');
+const inscricaoRoutes = require('./routes/inscricaoRoutes');
 
 // Importar Modelos
 const { User, Role } = require('./models/associations');
@@ -46,6 +47,7 @@ app.use('/api/stats', statsRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/horarios', horarioRoutes);
 app.use('/api/disponibilidades', disponibilidadeRoutes);
+app.use('/api/inscricoes', inscricaoRoutes);
 
 const PORT = process.env.PORT || 3000;
 

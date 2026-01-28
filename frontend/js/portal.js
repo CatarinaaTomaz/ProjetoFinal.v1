@@ -1,163 +1,125 @@
-const API_URL = 'http://localhost:3000/api';
-const BASE_URL = 'http://localhost:3000'; // URL base para imagens
+// ==========================================
+// CONFIGURAÇÃO INICIAL
+// ==========================================
+const API_BASE = (typeof window.API_URL !== 'undefined') ? window.API_URL : 'http://localhost:3000/api';
+const SERVER_URL = 'http://localhost:3000'; 
+
+console.log("🎓 Portal Aluno carregado! API:", API_BASE);
 
 document.addEventListener("DOMContentLoaded", () => {
-    // 1. Verificar Token
     const token = localStorage.getItem('token');
     const userStr = localStorage.getItem('user');
-    carregarCursosDisponiveis();
 
-    if (!token || !userStr) {
-        window.location.href = 'login.html';
-        return;
-    }
+    if (!token || !userStr) { window.location.href = 'login.html'; return; }
 
-    // 2. Preencher Dados
     try {
         const user = JSON.parse(userStr);
 
-        // Preencher textos
-        if(document.getElementById('nomeAluno')) document.getElementById('nomeAluno').textContent = user.nome || user.nome_completo || 'Utilizador';
-        if(document.getElementById('userEmail')) document.getElementById('userEmail').textContent = user.email;
-        if(document.getElementById('userRole')) document.getElementById('userRole').textContent = user.role || 'Formando';
-        if(document.getElementById('userId')) document.getElementById('userId').textContent = user.id || user.id_user;
-        if(document.getElementById('cursoAluno')) document.getElementById('cursoAluno').textContent = user.role || 'Formando';
+        // Segurança
+        if (user.role === 'Admin') window.location.href = 'dashboard.html';
+        if (user.role === 'Formador') window.location.href = 'portal-formador.html';
 
-        // 3. Carregar Foto
-        // Se a foto não começar por "http" (login social), adicionamos o prefixo da pasta uploads
+        // Preencher Dados
+        if(document.getElementById('nomeUser')) document.getElementById('nomeUser').textContent = user.nome || user.nome_completo;
+        
+        // Foto
         if (user.foto) {
-            const fotoSrc = user.foto.startsWith('http') 
-                ? user.foto 
-                : `${BASE_URL}/uploads/${user.foto}`;
-            document.getElementById('imgPerfil').src = fotoSrc;
+             const fotoSrc = user.foto.startsWith('http') ? user.foto : `${SERVER_URL}/uploads/${user.foto}`;
+             const img = document.getElementById('imgPerfil');
+             if(img) img.src = fotoSrc;
         }
 
+        // --- INICIAR CALENDÁRIO ---
+        iniciarCalendarioAluno();
+
     } catch (e) {
-        console.error("Erro ao ler utilizador:", e);
+        console.error("Erro crítico:", e);
         logout();
     }
 });
 
 // ==========================================
-// FUNÇÃO DE UPLOAD CORRIGIDA (PUT)
+// LÓGICA DO CALENDÁRIO DO ALUNO
 // ==========================================
-async function uploadFoto() {
-    const input = document.getElementById('inputFoto');
-    const file = input.files[0];
-    
-    if (!file) return;
+async function iniciarCalendarioAluno() {
+    const calendarEl = document.getElementById('calendarAluno');
+    if (!calendarEl) return;
 
-    // Dados Atuais
-    const userStr = localStorage.getItem('user');
-    const user = JSON.parse(userStr);
-    const token = localStorage.getItem('token');
-    const userId = user.id || user.id_user;
-
-    // PREPARAR FORMDATA (Correção: precisamos enviar os outros campos também ou o backend pode reclamar)
-    // No entanto, o nosso controlador atualiza apenas o que enviamos se estiver bem feito.
-    // Como segurança, enviamos o nome e email atuais para não os perder.
-    const formData = new FormData();
-    formData.append('foto', file);
-    formData.append('nome', user.nome || user.nome_completo);
-    formData.append('email', user.email);
-
-    try {
-        const imgElement = document.getElementById('imgPerfil');
-        imgElement.style.opacity = '0.5';
-
-        // CORREÇÃO: Usar a rota PUT /users/:id (a mesma do Dashboard)
-        const res = await fetch(`${API_URL}/users/${userId}`, {
-            method: 'PUT',
-            headers: { 'Authorization': 'Bearer ' + token },
-            body: formData
-        });
-
-        const data = await res.json();
-
-        if (res.ok) {
-            // Atualizar imagem no ecrã
-            // A resposta do backend traz { msg: "...", foto: "nome-da-foto.jpg" }
-            const novaFotoUrl = `${BASE_URL}/uploads/${data.foto}`;
-            imgElement.src = novaFotoUrl + '?t=' + new Date().getTime(); // Cache busting
-            
-            // Atualizar LocalStorage
-            user.foto = data.foto; // Guarda apenas o nome do ficheiro
-            localStorage.setItem('user', JSON.stringify(user));
-
-            alert('Foto atualizada com sucesso!');
-        } else {
-            alert('Erro: ' + (data.msg || 'Erro desconhecido'));
-        }
-
-    } catch (error) {
-        console.error(error);
-        alert('Erro ao ligar ao servidor.');
-    } finally {
-        document.getElementById('imgPerfil').style.opacity = '1';
-    }
-}
-
-async function carregarCursosDisponiveis() {
     const user = JSON.parse(localStorage.getItem('user'));
     const token = localStorage.getItem('token');
-    const tbody = document.getElementById('listaCursosCandidatura');
     const userId = user.id || user.id_user;
 
-    // Se API_URL não estiver definida, usa a padrão (segurança)
-    const url = (typeof API_URL !== 'undefined' ? API_URL : 'http://localhost:3000/api');
-
-    const res = await fetch(`${url}/cursos/disponiveis/${userId}`, { headers: { 'Authorization': 'Bearer ' + token } });
-    const cursos = await res.json();
-
-    tbody.innerHTML = '';
-    if (cursos.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" class="text-center">Sem cursos disponíveis.</td></tr>';
+    // 1. Descobrir o Curso do Aluno
+    let cursoId = null;
+    try {
+        const res = await fetch(`${API_BASE}/inscricoes/aluno/${userId}`, {
+            headers: { 'Authorization': 'Bearer ' + token }
+        });
+        
+        if (res.ok) {
+            const curso = await res.json();
+            cursoId = curso.id_curso; // Guardamos o ID do curso
+            console.log(`🎓 Aluno pertence ao curso: ${curso.nome} (ID: ${cursoId})`);
+        } else {
+            console.warn("Aluno sem matrícula ativa.");
+            calendarEl.innerHTML = '<div class="alert alert-warning">Não estás inscrito em nenhum curso.</div>';
+            return;
+        }
+    } catch (e) {
+        console.error("Erro ao buscar curso do aluno:", e);
         return;
     }
 
-    cursos.forEach(c => {
-        let estadoHtml = '<span class="badge bg-light text-dark border">Não Inscrito</span>';
-        let btnHtml = `<button class="btn btn-sm btn-primary" onclick="candidatar(${c.id_curso})">Candidatar</button>`;
+    // 2. Configurar Calendário
+    const calendar = new FullCalendar.Calendar(calendarEl, {
+        initialView: 'timeGridWeek',
+        locale: 'pt',
+        headerToolbar: { 
+            left: 'prev,next today', 
+            center: 'title', 
+            right: 'dayGridMonth,timeGridWeek' 
+        },
+        slotMinTime: '08:00:00',
+        slotMaxTime: '23:00:00',
+        allDaySlot: false,
+        height: '100%',
+        
+        // 3. Buscar Horários (Filtrando pelo Curso ID que descobrimos)
+        events: async (info, successCallback, failureCallback) => {
+            try {
+                // Truque: Usamos o filtro ?cursoId=X na rota de horários
+                const url = `${API_BASE}/horarios?cursoId=${cursoId}`;
+                
+                const res = await fetch(url, { headers: { 'Authorization': 'Bearer ' + token } });
+                const horarios = await res.json();
+                
+                const eventos = horarios.map(h => {
+                    const nomeModulo = h.Modulo ? h.Modulo.nome : 'Módulo';
+                    const nomeSala = h.Sala ? h.Sala.nome : 'Sala ?';
+                    const nomeFormador = (h.Modulo && h.Modulo.Formador) ? h.Modulo.Formador.nome_completo.split(' ')[0] : '';
 
-        if (c.estado_inscricao === 'Aceite') {
-            estadoHtml = '<span class="badge bg-success">Inscrito</span>';
-            btnHtml = '<button class="btn btn-sm btn-outline-success" disabled><i class="fas fa-check"></i></button>';
-        } else if (c.estado_inscricao === 'Pendente') {
-            estadoHtml = '<span class="badge bg-warning text-dark">Pendente</span>';
-            btnHtml = '<button class="btn btn-sm btn-outline-secondary" disabled><i class="fas fa-clock"></i></button>';
-        } else if (c.estado_inscricao === 'Rejeitado') {
-             estadoHtml = '<span class="badge bg-danger">Rejeitado</span>';
-             btnHtml = `<button class="btn btn-sm btn-outline-danger" onclick="candidatar(${c.id_curso})">Reenviar</button>`;
+                    return {
+                        id: h.id_horario,
+                        title: `${nomeModulo} (${nomeSala})`, // Título do evento
+                        description: `Formador: ${nomeFormador}`,
+                        start: `${h.data_aula.split('T')[0]}T${h.hora_inicio}`,
+                        end: `${h.data_aula.split('T')[0]}T${h.hora_fim}`,
+                        color: '#6f42c1', // Roxo (Cor diferente para alunos)
+                        textColor: '#ffffff'
+                    };
+                });
+                successCallback(eventos);
+            } catch (e) { failureCallback(e); }
+        },
+
+        // Clique no evento (Ver Detalhes)
+        eventClick: (info) => {
+            alert(`📅 AULA\n\n${info.event.title}\n${info.event.extendedProps.description || ''}\n\nHorário: ${info.event.start.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})} - ${info.event.end.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}`);
         }
-
-        tbody.innerHTML += `
-            <tr>
-                <td class="fw-bold">${c.nome}</td>
-                <td>${c.area}</td>
-                <td>${new Date(c.inicio).toLocaleDateString()}</td>
-                <td>${estadoHtml}</td>
-                <td>${btnHtml}</td>
-            </tr>`;
     });
+
+    calendar.render();
 }
-
-async function candidatar(cursoId) {
-    if(!confirm("Enviar candidatura?")) return;
-    const user = JSON.parse(localStorage.getItem('user'));
-    const token = localStorage.getItem('token');
-    const userId = user.id || user.id_user;
-    const url = (typeof API_URL !== 'undefined' ? API_URL : 'http://localhost:3000/api');
-
-    const res = await fetch(`${url}/cursos/candidatar`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-        body: JSON.stringify({ cursoId, userId })
-    });
-    
-    if(res.ok) { alert("Candidatura enviada!"); carregarCursosDisponiveis(); }
-    else { alert("Erro ao candidatar."); }
-}
-
 
 function logout() {
     localStorage.clear();
