@@ -101,17 +101,13 @@ async function criarAdminInicial() {
 // --- ARRANCAR SERVIDOR ---
 db.authenticate()
     .then(async () => {
-        // 1. Executa a correção da tabela
-        await fixTabelaDisponibilidades();
+        await db.sync(); 
         
-        // 2. Sincroniza (Recria a tabela limpa)
-        await db.sync({ alter: true });
-        
-        // 3. Cria dados iniciais
+        // 3. Cria dados iniciais (só corre se não existirem)
         await criarRolesIniciais();
         await criarAdminInicial();
 
-        console.log('Base de dados sincronizada!');
+        console.log('Base de dados sincronizada e pronta!');
         app.listen(PORT, () => console.log(`🚀 Servidor a correr na porta ${PORT}`));
     })
     .catch((err) => {

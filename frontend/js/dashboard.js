@@ -77,37 +77,20 @@ async function carregarConteudo(tipo) {
     
     // --- HORÁRIOS (NOVO) ---
     else if (tipo === 'horarios') {
-        titulo.innerText = 'Mapa de Aulas';
+        titulo.innerText = 'Mapa de Aulas (Calendário)';
+        // Em vez da tabela, criamos uma DIV para o calendário
         conteudo.innerHTML = `
-    <div class="card p-3 mb-3 shadow-sm">
-        <div class="row g-2">
-            <div class="col-md-3">
-                <label>Filtrar por Curso</label>
-                <select id="filtroCurso" class="form-select" onchange="listarHorarios()"></select>
+            <div class="card shadow-sm border-0">
+                <div class="card-body p-0">
+                    <div id="calendar" style="min-height: 800px;"></div>
+                </div>
             </div>
-            <div class="col-md-3">
-                <label>Filtrar por Formador</label>
-                <select id="filtroFormador" class="form-select" onchange="listarHorarios()"></select>
-            </div>
-            <div class="col-md-3">
-                <label>Data Início</label>
-                <input type="date" id="filtroDataInicio" class="form-control" onchange="listarHorarios()">
-            </div>
-             <div class="col-md-3 d-flex align-items-end">
-                <button class="btn btn-primary w-100" onclick="abrirModalHorario()"><i class="fas fa-plus"></i> Novo</button>
-            </div>
-        </div>
-    </div>
-    <div class="card shadow-sm border-0">
-        <div class="card-body">
-            <table class="table table-hover">
-                <thead class="table-dark"><tr><th>Data</th><th>Horas</th><th>Sala</th><th>Módulo / Formador</th><th>Ações</th></tr></thead>
-                <tbody id="tabelaHorarios"><tr><td colspan="5">A carregar...</td></tr></tbody>
-            </table>
-        </div>
-    </div>`;
-    await carregarFiltrosHorario(); 
-        listarHorarios();
+        `;
+        
+        // Iniciar o Calendário (com pequeno delay para o HTML carregar)
+        setTimeout(() => {
+            iniciarCalendario();
+        }, 100);
     }
 
     // --- UTILIZADORES ---
@@ -202,6 +185,83 @@ async function atualizarEstatisticasCompletas() {
         });
 
     } catch (e) { console.error("Erro stats:", e); }
+}
+
+
+// ==========================================
+// LÓGICA DO CALENDÁRIO (FULLCALENDAR)
+// ==========================================
+let calendar; // Variável global para o calendário
+
+async function iniciarCalendario() {
+    const calendarEl = document.getElementById('calendar');
+    if (!calendarEl) return;
+
+    // 1. Buscar dados à API
+    const token = localStorage.getItem('token');
+    // Trazemos TUDO (sem filtros) ou podes manter os filtros se quiseres
+    const res = await fetch(`${API_URL}/horarios`, { headers: { 'Authorization': 'Bearer ' + token } });
+    const horarios = await res.json();
+
+    // 2. Transformar dados da API para o formato do FullCalendar
+    const eventos = horarios.map(h => {
+        // Tenta obter o nome, se der erro usa genérico
+        const nomeModulo = h.Modulo ? h.Modulo.nome : 'Módulo Removido';
+        const nomeSala = h.Sala ? h.Sala.nome : 'Sem Sala';
+        const nomeFormador = (h.Modulo && h.Modulo.Formador) ? h.Modulo.Formador.nome_completo.split(' ')[0] : '';
+        
+        // Cores diferentes por sala (opcional, fica bonito)
+        let cor = '#3788d8'; // Azul padrão
+        if(nomeSala.includes('1')) cor = '#28a745'; // Verde
+        if(nomeSala.includes('2')) cor = '#dc3545'; // Vermelho
+
+        return {
+            id: h.id_horario,
+            title: `${nomeModulo} (${nomeSala}) - Prof. ${nomeFormador}`,
+            start: `${h.data_aula.split('T')[0]}T${h.hora_inicio}`,
+            end: `${h.data_aula.split('T')[0]}T${h.hora_fim}`,
+            color: cor,
+            extendedProps: { // Guardar dados extra para usar ao clicar
+                sala: nomeSala,
+                modulo: nomeModulo
+            }
+        };
+    });
+
+    // 3. Renderizar o Calendário
+    calendar = new FullCalendar.Calendar(calendarEl, {
+        initialView: 'timeGridWeek', // Vista semanal com horas
+        locale: 'pt', // Português
+        headerToolbar: {
+            left: 'prev,next today',
+            center: 'title',
+            right: 'dayGridMonth,timeGridWeek,timeGridDay'
+        },
+        slotMinTime: '08:00:00', // Começa às 8h
+        slotMaxTime: '23:00:00', // Acaba às 23h
+        allDaySlot: false, // Remove a barra "Dia Todo"
+        events: eventos,   // Os nossos dados
+        height: 'auto',
+
+        // --- AÇÃO 1: CLICAR NUMA DATA VAZIA (CRIAR) ---
+        dateClick: function(info) {
+            // info.dateStr vem como "2024-05-20T09:30:00..."
+            const data = info.dateStr.split('T')[0];
+            const hora = info.dateStr.split('T')[1].slice(0,5); // "09:30"
+            
+            // Abre o modal já com a data e hora preenchidas!
+            abrirModalHorario(data, hora);
+        },
+
+        // --- AÇÃO 2: CLICAR NUM EVENTO JÁ EXISTENTE (APAGAR) ---
+        eventClick: function(info) {
+            if(confirm(`Queres apagar a aula de ${info.event.title}?`)) {
+                eliminarHorario(info.event.id);
+            }
+        }
+    });
+
+    calendar.render();
 }
 
 // ==========================================
@@ -368,107 +428,53 @@ async function abrirModalModulo(id=null, n='', d='', fId='', sId='') {
     document.getElementById('tituloModalModulo').innerText = id?'Editar':'Novo';
     new bootstrap.Modal(document.getElementById('modalModulo')).show();
 }
+
 async function guardarModulo(){const id=document.getElementById('moduloId').value;const n=document.getElementById('moduloNome').value;const d=document.getElementById('moduloDescricao').value;const c=document.getElementById('moduloCursoId').value;const f=document.getElementById('moduloFormador').value;const s=document.getElementById('moduloSala').value;const t=localStorage.getItem('token');const m=id?'PUT':'POST';const u=id?`${API_URL}/modulos/${id}`:`${API_URL}/modulos`;await fetch(u,{method:m,headers:{'Content-Type':'application/json','Authorization':'Bearer '+t},body:JSON.stringify({nome:n,descricao:d,cursoId:c,formadorId:f,salaId:s})}).then(()=>{alert('Guardado');bootstrap.Modal.getInstance(document.getElementById('modalModulo')).hide();carregarModulosDoCurso();});}
 async function eliminarModulo(id){if(confirm("Apagar?")){const t=localStorage.getItem('token');await fetch(`${API_URL}/modulos/${id}`,{method:'DELETE',headers:{'Authorization':'Bearer '+t}}).then(carregarModulosDoCurso);}}
 
 // ==========================================
 // HORÁRIOS
 // ==========================================
-// ==========================================
-// LISTAR HORÁRIOS (COM FILTROS)
-// ==========================================
-async function listarHorarios() {
-    // 1. Tentar obter os valores dos filtros
-    // Usamos verificação (el ? el.value : '') para não dar erro se o elemento ainda não existir
-    const elCurso = document.getElementById('filtroCurso');
-    const elFormador = document.getElementById('filtroFormador');
-    const elData = document.getElementById('filtroDataInicio');
 
-    const cursoId = elCurso ? elCurso.value : '';
-    const formadorId = elFormador ? elFormador.value : '';
-    const dInicio = elData ? elData.value : '';
-    
-    // 2. Construir o URL com os parâmetros de pesquisa
-    let url = `${API_URL}/horarios?`;
-    if(cursoId) url += `cursoId=${cursoId}&`;
-    if(formadorId) url += `formadorId=${formadorId}&`;
-    if(dInicio) url += `dataInicio=${dInicio}&dataFim=2099-12-31`; // Filtra dessa data para a frente
+// Atualizámos o abrirModal para aceitar data/hora automáticas do clique
+async function abrirModalHorario(preData = '', preHora = '') {
+    // 1. Carregar Selects (Salas e Módulos)
+    // (Podes copiar a lógica de carregar selects que já tinhas aqui, ou chamar uma função separada)
+    await carregarSelectsHorario(); 
 
-    try {
-        const token = localStorage.getItem('token');
-        const res = await fetch(url, { 
-            headers: { 'Authorization': 'Bearer ' + token } 
-        });
-        const lista = await res.json();
-        
-        const t = document.getElementById('tabelaHorarios');
-        if (!t) return; // Segurança
-        t.innerHTML = '';
-        
-        // 3. Verificar se a lista está vazia
-        if (lista.length === 0) {
-            t.innerHTML = '<tr><td colspan="5" class="text-center text-muted p-3">Nenhum horário encontrado com estes filtros.</td></tr>';
-            return;
-        }
-
-        // 4. Desenhar as linhas da tabela
-        lista.forEach(h => {
-            // Formatação de segurança caso a Sala ou Módulo tenham sido apagados
-            const nomeSala = h.Sala ? h.Sala.nome : '<span class="text-danger">Sala Removida</span>';
-            const nomeModulo = h.Modulo ? h.Modulo.nome : '<span class="text-danger">Módulo Removido</span>';
-            const nomeFormador = (h.Modulo && h.Modulo.Formador) ? h.Modulo.Formador.nome_completo : 'Sem Formador';
-            const nomeCurso = (h.Modulo && h.Modulo.Curso) ? h.Modulo.Curso.nome : '-';
-
-            t.innerHTML += `
-                <tr>
-                    <td>${new Date(h.data_aula).toLocaleDateString('pt-PT')}</td>
-                    <td>
-                        <span class="badge bg-light text-dark border">
-                            <i class="far fa-clock me-1"></i>
-                            ${h.hora_inicio.slice(0,5)} - ${h.hora_fim.slice(0,5)}
-                        </span>
-                    </td>
-                    <td class="fw-bold text-primary">${nomeSala}</td>
-                    <td>
-                        <strong>${nomeModulo}</strong> <small class="text-muted">(${nomeCurso})</small><br>
-                        <small><i class="fas fa-user-tie me-1"></i>${nomeFormador}</small>
-                    </td>
-                    <td>
-                        <button class="btn btn-sm btn-danger" onclick="eliminarHorario(${h.id_horario})" title="Desmarcar Aula">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </td>
-                </tr>
-            `;
-        });
-
-    } catch (error) {
-        console.error("Erro ao listar horários:", error);
-        const t = document.getElementById('tabelaHorarios');
-        if(t) t.innerHTML = '<tr><td colspan="5" class="text-center text-danger">Erro ao carregar dados.</td></tr>';
+    // 2. Preencher Inputs
+    if(preData) document.getElementById('hData').value = preData;
+    if(preHora) {
+        document.getElementById('hInicio').value = preHora;
+        // Sugere fim 1 hora depois automaticamente
+        const [h, m] = preHora.split(':');
+        const horaFim = parseInt(h) + 1;
+        document.getElementById('hFim').value = `${horaFim.toString().padStart(2,'0')}:${m}`;
     }
-}
-
-async function abrirModalHorario() {
-    if(todasSalas.length === 0) await preencherTabelaSalas();
-    
-    const selSala = document.getElementById('hSala');
-    const selMod = document.getElementById('hModulo');
-    
-    selSala.innerHTML = '';
-    todasSalas.forEach(s => selSala.innerHTML += `<option value="${s.id_sala}">${s.nome}</option>`);
-
-    const token = localStorage.getItem('token');
-    // Para simplificar, buscamos todos os módulos. O ideal seria filtrar por curso.
-    const resMod = await fetch(`${API_URL}/modulos`, { headers: { 'Authorization': 'Bearer ' + token } }); 
-    const todosMods = await resMod.json();
-    
-    selMod.innerHTML = '';
-    todosMods.forEach(m => selMod.innerHTML += `<option value="${m.id_modulo}">${m.nome}</option>`);
 
     new bootstrap.Modal(document.getElementById('modalHorario')).show();
 }
 
+// Função auxiliar para carregar os selects do modal (se não tiveres separada)
+async function carregarSelectsHorario() {
+    const token = localStorage.getItem('token');
+    
+    // Salas
+    const resSalas = await fetch(`${API_URL}/salas`, { headers: {'Authorization': 'Bearer '+token}});
+    const salas = await resSalas.json();
+    const sSala = document.getElementById('hSala');
+    sSala.innerHTML = '';
+    salas.forEach(s => sSala.innerHTML += `<option value="${s.id_sala}">${s.nome}</option>`);
+
+    // Módulos
+    const resMods = await fetch(`${API_URL}/modulos`, { headers: {'Authorization': 'Bearer '+token}});
+    const mods = await resMods.json();
+    const sMod = document.getElementById('hModulo');
+    sMod.innerHTML = '';
+    mods.forEach(m => sMod.innerHTML += `<option value="${m.id_modulo}">${m.nome} (${m.Curso ? m.Curso.nome : '-'})</option>`);
+}
+
+// Atualizar o Guardar para recarregar o calendário
 async function guardarHorario() {
     const data = {
         data_aula: document.getElementById('hData').value,
@@ -490,17 +496,16 @@ async function guardarHorario() {
     if (res.ok) {
         alert('Agendado!');
         bootstrap.Modal.getInstance(document.getElementById('modalHorario')).hide();
-        listarHorarios();
+        iniciarCalendario(); // <--- Recarrega o calendário visualmente
     } else {
-        alert('Erro: ' + json.msg); 
+        alert('Erro: ' + json.msg); // Mostra o erro da disponibilidade/sala se houver
     }
 }
 
 async function eliminarHorario(id) {
-    if(!confirm("Desmarcar aula?")) return;
     const token = localStorage.getItem('token');
     await fetch(`${API_URL}/horarios/${id}`, { method: 'DELETE', headers: { 'Authorization': 'Bearer ' + token } });
-    listarHorarios();
+    iniciarCalendario(); // Recarrega o calendário
 }
 
 // ==========================================
