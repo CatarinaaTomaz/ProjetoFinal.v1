@@ -1,0 +1,45 @@
+/* =========================================
+  DARK MODE
+   ========================================= */
+
+/* 1. Forçar fundo escuro no corpo e remover brancos forçados */
+[data-bs-theme="dark"] body {
+    background-color: #212529 !important; /* Cinzento muito escuro */
+    color: #f8f9fa !important;
+}
+
+/* 2. Cartões e Modais */
+[data-bs-theme="dark"] .card, 
+[data-bs-theme="dark"] .modal-content {
+    background-color: #2c3034 !important; /* Ligeiramente mais claro que o fundo */
+    border-color: #495057;
+    color: #fff;
+}
+
+/* 3. Inputs e Selects */
+[data-bs-theme="dark"] .form-control, 
+[data-bs-theme="dark"] .form-select {
+    background-color: #212529;
+    border-color: #495057;
+    color: #fff;
+}
+
+/* 4. Tabelas */
+[data-bs-theme="dark"] .table {
+    color: #e0e0e0;
+    --bs-table-color: #e0e0e0;
+    --bs-table-bg: #212529;
+    --bs-table-border-color: #495057;
+}
+
+/* 5. FullCalendar (Correção Especial) */
+[data-bs-theme="dark"] .fc-theme-standard td, 
+[data-bs-theme="dark"] .fc-theme-standard th {
+    border-color: #444 !important;
+}
+[data-bs-theme="dark"] .fc .fc-toolbar-title {
+    color: #fff !important;
+}
+[data-bs-theme="dark"] .fc-daygrid-day-number {
+    color: #e0e0e0 !important;
+}

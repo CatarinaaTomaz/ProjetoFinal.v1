@@ -1,27 +1,22 @@
 const express = require('express');
 const router = express.Router();
 const cursoController = require('../controllers/cursoController');
+const inscricaoController = require('../controllers/inscricaoController'); 
 
-// Verificar se o controlador foi importado corretamente
-if (!cursoController) {
-    console.error("Erro: O controlador de cursos não foi importado corretamente.");
-}
-
-// Definição das Rotas
+// 1. Rotas CRUD de Cursos
 router.get('/', cursoController.listarCursos);
 router.post('/', cursoController.criarCurso);
 router.put('/:id', cursoController.atualizarCurso);
 router.delete('/:id', cursoController.eliminarCurso);
 
-// --- NOVAS ROTAS DE GESTÃO DE ALUNOS ---
-router.get('/:id/alunos', cursoController.listarAlunosCurso);   
-router.post('/:id/alunos', cursoController.adicionarAluno);          
-router.delete('/:id/alunos/:alunoId', cursoController.removerAluno); 
+// 2. Rota Inteligente (Para a Tabela do Aluno)
+router.get('/disponiveis/:userId', cursoController.listarCursosParaCandidatura);
 
-// ROTAS DE CANDIDATURAS 
-router.get('/candidaturas/pendentes', cursoController.listarCandidaturasPendentes); // Admin vê lista
-router.put('/candidaturas/:id', cursoController.gerirCandidatura); // Admin decide
-router.post('/candidatar', cursoController.candidatar); // User candidata-se
-router.get('/disponiveis/:userId', cursoController.listarCursosParaCandidatura); // User vê cursos
+// 3. ROTAS DE ALUNOS NOS CURSOS (ADMIN)
+// Como o Admin manda pedidos para /api/cursos/:id/alunos, definimos aqui,
+// mas usamos a função que está no inscricaoController.
+router.get('/:id/alunos', inscricaoController.listarAlunosCurso);
+router.post('/:id/alunos', inscricaoController.adicionarAluno); // <--- O BOTÃO AZUL
+router.delete('/:id/alunos/:alunoId', inscricaoController.removerAluno);
 
 module.exports = router;
