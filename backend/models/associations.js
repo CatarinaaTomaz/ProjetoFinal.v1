@@ -30,11 +30,11 @@ User.belongsToMany(Curso, { through: Inscricao, foreignKey: 'userId' });
 Curso.belongsToMany(User, { through: Inscricao, foreignKey: 'cursoId' });
 
 // Acesso direto à tabela Inscricao (útil para ver o 'estado' ou 'data_inscricao')
-User.hasMany(Inscricao, { foreignKey: 'userId' });
 Inscricao.belongsTo(User, { foreignKey: 'userId' });
-
-Curso.hasMany(Inscricao, { foreignKey: 'cursoId' });
 Inscricao.belongsTo(Curso, { foreignKey: 'cursoId' });
+
+User.hasMany(Inscricao, { foreignKey: 'userId' });
+Curso.hasMany(Inscricao, { foreignKey: 'cursoId' });
 
 // Uma Turma pertence a um Curso (ex: A turma '0525' é do curso 'TPSI')
 Turma.belongsTo(Curso, { foreignKey: 'cursoId' });

@@ -6,14 +6,13 @@ const bcrypt = require('bcryptjs');
 // Configuração do ambiente
 require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
 
-// Teste de Debug
 console.log("--------------------------------------");
 console.log("Estado do Servidor:");
 console.log("Email User:", process.env.EMAIL_USER ? "✅ Carregado" : "❌ Falta no .env");
 console.log("Google ID:", process.env.GOOGLE_CLIENT_ID ? "✅ Carregado" : "❌ Falta no .env");
 console.log("--------------------------------------");
 
-const db = require('./config/db');
+const db = require('./config/db'); 
 
 // Importar Rotas
 const authRoutes = require('./routes/authRoutes');
@@ -27,8 +26,8 @@ const horarioRoutes = require('./routes/horarioRoutes');
 const disponibilidadeRoutes = require('./routes/disponibilidadeRoutes');
 const inscricaoRoutes = require('./routes/inscricaoRoutes');
 
-// Importar Modelos
-const { User, Role } = require('./models/associations');
+// Importar Associações
+require('./models/associations'); 
 
 const app = express();
 
@@ -51,28 +50,16 @@ app.use('/api/inscricoes', inscricaoRoutes);
 
 const PORT = process.env.PORT || 3000;
 
-// --- FUNÇÃO DE CORREÇÃO AUTOMÁTICA ---
-async function fixTabelaDisponibilidades() {
-    try {
-        console.log("🛠️ A tentar corrigir a tabela 'disponibilidades'...");
-        // Desliga a segurança, apaga a tabela estragada e volta a ligar
-        await db.query('SET FOREIGN_KEY_CHECKS = 0');
-        await db.query('DROP TABLE IF EXISTS disponibilidades');
-        await db.query('SET FOREIGN_KEY_CHECKS = 1');
-        console.log("✅ Tabela limpa com sucesso! O Sequelize vai recriá-la agora.");
-    } catch (error) {
-        console.error("⚠️ Erro ao tentar limpar tabela (pode já não existir):", error);
-    }
-}
-
 // --- FUNÇÕES DE INICIALIZAÇÃO ---
+const { Role, User } = require('./models/associations');
+
 async function criarRolesIniciais() {
     try {
         const roles = ['Admin', 'Formando', 'Formador', 'Secretaria'];
         for (const roleName of roles) {
             await Role.findOrCreate({ where: { descricao: roleName } });
         }
-        console.log('Roles verificadas!');
+        console.log('✅ Roles verificadas!');
     } catch (error) { console.error('Erro roles:', error); }
 }
 
@@ -85,33 +72,40 @@ async function criarAdminInicial() {
             const roleAdmin = await Role.findOne({ where: { descricao: 'Admin' } });
             if (roleAdmin) {
                 const salt = await bcrypt.genSalt(10);
-                const password_hash = await bcrypt.hash('pass614', salt);
+                const password_hash_gerada = await bcrypt.hash('pass614', salt);
                 
                 await User.create({
                     nome_completo: 'Administrador Principal',
                     email: emailAdmin,
-                    password: password_hash, 
+                    password_hash: password_hash_gerada,
                     conta_ativa: true,
                     roleId: roleAdmin.id_role
                 });
-                console.log('✅ Admin criado!');
+                console.log('✅ Admin criado com sucesso!');
             }
+        } else {
+            console.log('✅ Admin já existe (dados preservados).');
         }
-    } catch (error) { console.error('Erro ao criar admin:', error); }
+    } catch (error) { 
+        console.error('❌ Erro ao criar admin:', error.message); 
+    }
 }
 
-// --- ARRANCAR SERVIDOR ---
+// --- ARRANCAR SERVIDOR (MODO DEFINITIVO) ---
 db.authenticate()
     .then(async () => {
-        await db.sync(); 
+        console.log('✅ Ligação à BD estabelecida.');
+
+        // ALTER: TRUE -> Mantém os dados e só atualiza colunas se necessário
+        await db.sync({ alter: true }); 
         
-        // 3. Cria dados iniciais (só corre se não existirem)
+        console.log('💾 Base de Dados sincronizada (Dados Preservados)!');
+
         await criarRolesIniciais();
         await criarAdminInicial();
 
-        console.log('Base de dados sincronizada e pronta!');
         app.listen(PORT, () => console.log(`🚀 Servidor a correr na porta ${PORT}`));
     })
     .catch((err) => {
-        console.error('Erro fatal ao arrancar:', err);
+        console.error('❌ Erro fatal ao arrancar:', err);
     });
