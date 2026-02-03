@@ -291,13 +291,185 @@ async function carregarDropdownFormandos(){const s=document.getElementById('selA
 async function guardarInscricao(){const uid=document.getElementById('selAlunoInscricao').value;if(!uid)return alert('Escolhe um aluno');const res=await fetch(`${API_URL}/cursos/${cursoSelecionadoId}/alunos`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+localStorage.getItem('token')},body:JSON.stringify({userId:uid})});if(res.ok){alert('Adicionado');carregarInscritos();}else{alert('Erro/Já existe');}}
 async function removerInscricao(uid){if(!confirm('Remover?'))return;await fetch(`${API_URL}/cursos/${cursoSelecionadoId}/alunos/${uid}`,{method:'DELETE',headers:{'Authorization':'Bearer '+localStorage.getItem('token')}});carregarInscritos();}
 
-// Modulos
-async function preencherSelectCursos(){const r=await fetch(`${API_URL}/cursos`,{headers:{'Authorization':'Bearer '+localStorage.getItem('token')}});const c=await r.json();const s=document.getElementById('filtroCursoModulo');s.innerHTML='<option value="">Escolhe...</option>';c.forEach(x=>s.innerHTML+=`<option value="${x.id_curso}">${x.nome}</option>`);}
-async function carregarModulosDoCurso(){const cid=document.getElementById('filtroCursoModulo').value;const t=document.getElementById('tabelaModulos');const btn=document.getElementById('btnNovoModulo');if(!cid){btn.disabled=true;t.innerHTML='<tr><td>Escolhe curso.</td></tr>';return;}btn.disabled=false;const r=await fetch(`${API_URL}/modulos?cursoId=${cid}`,{headers:{'Authorization':'Bearer '+localStorage.getItem('token')}});const m=await r.json();t.innerHTML='';if(m.length===0){t.innerHTML='<tr><td colspan="5">Vazio.</td></tr>';return;}m.forEach(x=>{t.innerHTML+=`<tr><td>#${x.id_modulo}</td><td>${x.nome}</td><td>${x.Formador?x.Formador.nome_completo:'-'}<br>${x.Sala?x.Sala.nome:'-'}</td><td>${x.descricao||'-'}</td><td class="text-end"><button class="btn btn-sm btn-outline-warning" onclick="abrirModalModulo(${x.id_modulo},'${x.nome}','${x.descricao}','${x.formadorId||''}','${x.salaId||''}')"><i class="fas fa-edit"></i></button> <button class="btn btn-sm btn-outline-danger" onclick="eliminarModulo(${x.id_modulo})"><i class="fas fa-trash"></i></button></td></tr>`;});}
-async function preencherSelectsModalModulo(){const t=localStorage.getItem('token');const u=await(await fetch(`${API_URL}/users`,{headers:{'Authorization':'Bearer '+t}})).json();const sf=document.getElementById('moduloFormador');sf.innerHTML='<option value="">Sem Formador</option>';u.forEach(x=>{if(x.Role&&x.Role.descricao.includes('Formador'))sf.innerHTML+=`<option value="${x.id_user}">${x.nome_completo}</option>`;});const s=await(await fetch(`${API_URL}/salas`,{headers:{'Authorization':'Bearer '+t}})).json();const ss=document.getElementById('moduloSala');ss.innerHTML='<option value="">Sem Sala</option>';s.forEach(x=>ss.innerHTML+=`<option value="${x.id_sala}">${x.nome}</option>`);}
-async function abrirModalModulo(id=null,n='',d='',f='',s=''){await preencherSelectsModalModulo();document.getElementById('moduloId').value=id||'';document.getElementById('moduloCursoId').value=document.getElementById('filtroCursoModulo').value;document.getElementById('moduloNome').value=n;document.getElementById('moduloDescricao').value=d;document.getElementById('moduloFormador').value=f;document.getElementById('moduloSala').value=s;document.getElementById('tituloModalModulo').innerText=id?'Editar':'Novo';new bootstrap.Modal(document.getElementById('modalModulo')).show();}
-async function guardarModulo(){const id=document.getElementById('moduloId').value;const u=id?`${API_URL}/modulos/${id}`:`${API_URL}/modulos`;const m=id?'PUT':'POST';await fetch(u,{method:m,headers:{'Content-Type':'application/json','Authorization':'Bearer '+localStorage.getItem('token')},body:JSON.stringify({nome:document.getElementById('moduloNome').value,descricao:document.getElementById('moduloDescricao').value,cursoId:document.getElementById('moduloCursoId').value,formadorId:document.getElementById('moduloFormador').value,salaId:document.getElementById('moduloSala').value})}).then(()=>{alert('Guardado');bootstrap.Modal.getInstance(document.getElementById('modalModulo')).hide();carregarModulosDoCurso();});}
-async function eliminarModulo(id){if(confirm("Apagar?")){await fetch(`${API_URL}/modulos/${id}`,{method:'DELETE',headers:{'Authorization':'Bearer '+localStorage.getItem('token')}});carregarModulosDoCurso();}}
+// --- GESTÃO DE MÓDULOS (Global) ---
+// 1. Preencher filtro de cursos
+window.preencherSelectCursos = async function() {
+    try {
+        const res = await fetch(`${API_URL}/cursos`, {
+            headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') }
+        });
+        const cursos = await res.json();
+        const select = document.getElementById('filtroCursoModulo');
+        select.innerHTML = '<option value="">Escolhe um Curso...</option>';
+        cursos.forEach(c => select.innerHTML += `<option value="${c.id_curso}">${c.nome}</option>`);
+    } catch (e) { console.error(e); }
+};
+
+// 2. Carregar a Tabela
+window.carregarModulosDoCurso = async function() {
+    const cursoId = document.getElementById('filtroCursoModulo').value;
+    const tabela = document.getElementById('tabelaModulos');
+    const btnNovo = document.getElementById('btnNovoModulo');
+
+    if (!cursoId) {
+        if(btnNovo) btnNovo.disabled = true;
+        tabela.innerHTML = '<tr><td colspan="6" class="text-center">Por favor, seleciona um curso acima.</td></tr>';
+        return;
+    }
+
+    if(btnNovo) btnNovo.disabled = false;
+
+    try {
+        const res = await fetch(`${API_URL}/modulos?cursoId=${cursoId}`, {
+            headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') }
+        });
+        const modulos = await res.json();
+        tabela.innerHTML = '';
+
+        if (modulos.length === 0) {
+            tabela.innerHTML = '<tr><td colspan="6" class="text-center">Sem módulos neste curso.</td></tr>';
+            return;
+        }
+
+        modulos.forEach(m => {
+            const nomeFormador = m.User ? m.User.nome_completo : (m.Formador ? m.Formador.nome_completo : 'Sem Formador');
+            const nomeSala = m.Sala ? m.Sala.nome : 'Sem Sala';
+            const formadorId = m.userId || m.formadorId || 0;
+            const salaId = m.salaId || 0;
+            const duracao = m.duracao || 0;
+
+            tabela.innerHTML += `
+                <tr>
+                    <td>#${m.id_modulo}</td>
+                    <td><strong>${m.nome}</strong><br><small class="text-muted">${nomeSala}</small></td>
+                    <td class="text-center"><span class="badge bg-info text-dark">${duracao}h</span></td>
+                    <td>
+                        <p class="mb-0 fw-bold">${nomeFormador}</p>
+                        <p class="mb-0 text-muted small">${m.descricao || ''}</p>
+                    </td>
+                    <td class="text-end">
+                        <button class="btn btn-sm btn-outline-warning" 
+                            onclick="window.prepararEdicao(${m.id_modulo}, '${m.nome}', '${m.descricao || ''}', ${duracao}, ${m.cursoId}, ${formadorId}, ${salaId})">
+                            <i class="fas fa-edit"></i>
+                        </button> 
+                        <button class="btn btn-sm btn-outline-danger" onclick="window.eliminarModulo(${m.id_modulo})">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>`;
+        });
+    } catch (e) { console.error(e); }
+};
+
+// 3. Preparar Selects do Modal
+window.preencherSelectsModalModulo = async function() {
+    const token = localStorage.getItem('token');
+    
+    // Formadores
+    const resU = await fetch(`${API_URL}/users`, { headers: { 'Authorization': 'Bearer ' + token }});
+    const users = await resU.json();
+    const selF = document.getElementById('moduloFormador');
+    selF.innerHTML = '<option value="">Sem Formador</option>';
+    users.forEach(u => {
+        if ((u.Role && u.Role.descricao.includes('Formador')) || u.roleId == 3) {
+            selF.innerHTML += `<option value="${u.id_user}">${u.nome_completo}</option>`;
+        }
+    });
+
+    // Salas
+    const resS = await fetch(`${API_URL}/salas`, { headers: { 'Authorization': 'Bearer ' + token }});
+    const salas = await resS.json();
+    const selS = document.getElementById('moduloSala');
+    selS.innerHTML = '<option value="">Sem Sala</option>';
+    salas.forEach(s => selS.innerHTML += `<option value="${s.id_sala}">${s.nome}</option>`);
+};
+
+// 4. Limpar Modal (Botão Novo)
+window.limparModal = async function() {
+    await window.preencherSelectsModalModulo();
+    document.getElementById('formModulo').reset();
+    document.getElementById('moduloId').value = "";
+    document.getElementById('moduloCursoId').value = document.getElementById('filtroCursoModulo').value;
+    
+    document.getElementById('tituloModalModulo').innerText = "Novo Módulo";
+    document.getElementById('btnGuardarModulo').innerText = "Criar";
+    
+    new bootstrap.Modal(document.getElementById('modalCriarModulo')).show();
+};
+
+// 5. Preparar Edição (Botão Editar)
+window.prepararEdicao = async function(id, nome, desc, duracao, cursoId, formadorId, salaId) {
+    await window.preencherSelectsModalModulo();
+    
+    document.getElementById('moduloId').value = id;
+    document.getElementById('moduloNome').value = nome;
+    document.getElementById('moduloDescricao').value = desc;
+    document.getElementById('moduloDuracao').value = duracao;
+    document.getElementById('moduloCursoId').value = cursoId;
+    document.getElementById('moduloFormador').value = (formadorId && formadorId != 0) ? formadorId : "";
+    document.getElementById('moduloSala').value = (salaId && salaId != 0) ? salaId : "";
+
+    document.getElementById('tituloModalModulo').innerText = "Editar Módulo";
+    document.getElementById('btnGuardarModulo').innerText = "Atualizar";
+
+    new bootstrap.Modal(document.getElementById('modalCriarModulo')).show();
+};
+
+// 6. Guardar (Criar ou Editar)
+window.guardarModulo = async function() {
+    const id = document.getElementById('moduloId').value;
+    const nome = document.getElementById('moduloNome').value;
+    const descricao = document.getElementById('moduloDescricao').value;
+    const duracao = document.getElementById('moduloDuracao').value;
+    const cursoId = document.getElementById('moduloCursoId').value;
+    const formadorId = document.getElementById('moduloFormador').value;
+    const salaId = document.getElementById('moduloSala').value;
+
+    if (!nome || !cursoId) return alert("Preenche Nome e Curso!");
+    if (!duracao || duracao <= 0) return alert("Duração inválida!");
+
+    const dados = {
+        nome, descricao, 
+        duracao: parseInt(duracao), 
+        cursoId: parseInt(cursoId),
+        formadorId: formadorId ? parseInt(formadorId) : null,
+        userId: formadorId ? parseInt(formadorId) : null,
+        salaId: salaId ? parseInt(salaId) : null
+    };
+
+    try {
+        const url = id ? `${API_URL}/modulos/${id}` : `${API_URL}/modulos`;
+        const method = id ? 'PUT' : 'POST';
+
+        const res = await fetch(url, {
+            method: method,
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem('token') },
+            body: JSON.stringify(dados)
+        });
+
+        if (res.ok) {
+            alert("Sucesso!");
+            const modalEl = document.getElementById('modalCriarModulo');
+            const modalInstance = bootstrap.Modal.getInstance(modalEl);
+            if (modalInstance) modalInstance.hide();
+            window.carregarModulosDoCurso();
+        } else {
+            alert("Erro ao guardar.");
+        }
+    } catch (e) { console.error(e); }
+};
+
+// 7. Eliminar
+window.eliminarModulo = async function(id) {
+    if (confirm("Apagar mesmo?")) {
+        await fetch(`${API_URL}/modulos/${id}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') }
+        });
+        window.carregarModulosDoCurso();
+    }
+};
+
 
 // Users & Salas & PDF
 async function preencherTabelaUtilizadores(){const r=await fetch(`${API_URL}/users`,{headers:{'Authorization':'Bearer '+localStorage.getItem('token')}});todosUtilizadores=await r.json();desenharTabelaUsers(todosUtilizadores);}
@@ -368,12 +540,143 @@ function abrirModalSala(id=null,n='',tp='Teórica',c=''){document.getElementById
 async function guardarSala(){const id=document.getElementById('salaId').value;const u=id?`${API_URL}/salas/${id}`:`${API_URL}/salas`;const m=id?'PUT':'POST';await fetch(u,{method:m,headers:{'Content-Type':'application/json','Authorization':'Bearer '+localStorage.getItem('token')},body:JSON.stringify({nome:document.getElementById('salaNome').value,tipo:document.getElementById('salaTipo').value,capacidade:document.getElementById('salaCapacidade').value})});alert('Guardado');bootstrap.Modal.getInstance(document.getElementById('modalSala')).hide();preencherTabelaSalas();}
 async function eliminarSala(id){if(confirm("Apagar?")){await fetch(`${API_URL}/salas/${id}`,{method:'DELETE',headers:{'Authorization':'Bearer '+localStorage.getItem('token')}});preencherTabelaSalas();}}
 
-// Calendário
-async function iniciarCalendario(){const el=document.getElementById('calendar');if(!el)return;const r=await fetch(`${API_URL}/horarios`,{headers:{'Authorization':'Bearer '+localStorage.getItem('token')}});const h=await r.json();const evt=h.map(x=>({id:x.id_horario,title:`${x.Modulo?x.Modulo.nome:'-'} (${x.Sala?x.Sala.nome:'-'})`,start:`${x.data_aula.split('T')[0]}T${x.hora_inicio}`,end:`${x.data_aula.split('T')[0]}T${x.hora_fim}`,color:x.Sala&&x.Sala.nome.includes('1')?'#28a745':'#3788d8'}));calendar=new FullCalendar.Calendar(el,{initialView:'timeGridWeek',locale:'pt',headerToolbar:{left:'prev,next today',center:'title',right:'dayGridMonth,timeGridWeek'},slotMinTime:'08:00',slotMaxTime:'23:00',allDaySlot:false,events:evt,height:'auto',dateClick:i=>abrirModalHorario(i.dateStr.split('T')[0],i.dateStr.split('T')[1].slice(0,5)),eventClick:i=>{if(confirm('Apagar?'))eliminarHorario(i.event.id)}});calendar.render();}
-async function abrirModalHorario(d='',h=''){await carregarSelectsHorario();if(d)document.getElementById('hData').value=d;if(h){document.getElementById('hInicio').value=h;const[hr,mn]=h.split(':');document.getElementById('hFim').value=`${(parseInt(hr)+1).toString().padStart(2,'0')}:${mn}`;}new bootstrap.Modal(document.getElementById('modalHorario')).show();}
-async function carregarSelectsHorario(){const t=localStorage.getItem('token');const s=await(await fetch(`${API_URL}/salas`,{headers:{'Authorization':'Bearer '+t}})).json();const m=await(await fetch(`${API_URL}/modulos`,{headers:{'Authorization':'Bearer '+t}})).json();document.getElementById('hSala').innerHTML=s.map(x=>`<option value="${x.id_sala}">${x.nome}</option>`).join('');document.getElementById('hModulo').innerHTML=m.map(x=>`<option value="${x.id_modulo}">${x.nome} (${x.Curso?x.Curso.nome:'-'})</option>`).join('');}
-async function guardarHorario(){const d={data_aula:document.getElementById('hData').value,hora_inicio:document.getElementById('hInicio').value,hora_fim:document.getElementById('hFim').value,salaId:document.getElementById('hSala').value,moduloId:document.getElementById('hModulo').value};const r=await fetch(`${API_URL}/horarios`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+localStorage.getItem('token')},body:JSON.stringify(d)});if(r.ok){alert('Agendado');bootstrap.Modal.getInstance(document.getElementById('modalHorario')).hide();iniciarCalendario();}else{alert((await r.json()).msg);}}
-async function eliminarHorario(id){await fetch(`${API_URL}/horarios/${id}`,{method:'DELETE',headers:{'Authorization':'Bearer '+localStorage.getItem('token')}});iniciarCalendario();}
+
+// --- GESTÃO DE HORÁRIOS E CALENDÁRIO ---
+// 1. Iniciar Calendário
+async function iniciarCalendario(){
+    const el = document.getElementById('calendar');
+    if(!el) return;
+
+    try {
+        const r = await fetch(`${API_URL}/horarios`, {
+            headers: {'Authorization': 'Bearer ' + localStorage.getItem('token')}
+        });
+        const h = await r.json();
+
+        const evt = h.map(x => ({
+            id: x.id_horario,
+            title: `${x.Modulo ? x.Modulo.nome : '-'} (${x.Sala ? x.Sala.nome : '-'})`,
+            start: `${x.data_aula.split('T')[0]}T${x.hora_inicio}`,
+            end: `${x.data_aula.split('T')[0]}T${x.hora_fim}`,
+            color: x.Sala && x.Sala.nome.includes('1') ? '#28a745' : '#3788d8'
+        }));
+
+        const calendar = new FullCalendar.Calendar(el, {
+            initialView: 'timeGridWeek',
+            locale: 'pt',
+            headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek' },
+            slotMinTime: '08:00',
+            slotMaxTime: '23:00',
+            allDaySlot: false,
+            events: evt,
+            height: 'auto',
+            // Ao clicar na grelha vazia, abre modal para criar
+            dateClick: info => abrirModalHorario(info.dateStr.split('T')[0], info.dateStr.split('T')[1]?.slice(0,5)),
+            // Ao clicar num evento existente, pergunta se quer apagar
+            eventClick: info => { if(confirm('Apagar este horário?')) eliminarHorario(info.event.id) }
+        });
+        
+        calendar.render();
+    } catch (e) { console.error("Erro calendário:", e); }
+}
+
+// 2. Abrir Modal (Prepara e Mostra)
+async function abrirModalHorario(data = '', hora = '') {
+    await carregarSelectsHorario(); // Carrega as listas de salas/módulos
+
+    // Preenche a data se clicaste no calendário
+    if(data) document.getElementById('horarioData').value = data;
+    
+    // Preenche a hora de início e sugere 1h de duração
+    if(hora) {
+        document.getElementById('horarioInicio').value = hora;
+        const [hr, mn] = hora.split(':');
+        // Calcula hora fim (+1 hora)
+        const horaFim = (parseInt(hr) + 1).toString().padStart(2, '0');
+        document.getElementById('horarioFim').value = `${horaFim}:${mn}`;
+    }
+
+    // Abre o modal correto (ID: modalAgendarHorario)
+    new bootstrap.Modal(document.getElementById('modalAgendarHorario')).show();
+}
+
+// 3. Carregar Selects (Salas e Módulos)
+async function carregarSelectsHorario() {
+    const t = localStorage.getItem('token');
+    
+    // Salas
+    const s = await(await fetch(`${API_URL}/salas`, { headers: {'Authorization': 'Bearer '+t} })).json();
+    document.getElementById('horarioSala').innerHTML = '<option value="">Escolhe...</option>' + 
+        s.map(x => `<option value="${x.id_sala}">${x.nome}</option>`).join('');
+
+    // Módulos
+    const m = await(await fetch(`${API_URL}/modulos`, { headers: {'Authorization': 'Bearer '+t} })).json();
+    document.getElementById('horarioModulo').innerHTML = '<option value="">Escolhe...</option>' + 
+        m.map(x => `<option value="${x.id_modulo}">${x.nome} (${x.Curso ? x.Curso.nome : '-'})</option>`).join('');
+}
+
+// 4. Guardar Horário (A tua função, mas garantida global)
+window.guardarHorario = async function() {
+    const data = document.getElementById('horarioData').value;
+    const inicio = document.getElementById('horarioInicio').value;
+    const fim = document.getElementById('horarioFim').value;
+    const salaId = document.getElementById('horarioSala').value;
+    const moduloId = document.getElementById('horarioModulo').value;
+
+    if (!data || !inicio || !fim || !salaId || !moduloId) {
+        return alert("Por favor, preenche todos os campos!");
+    }
+
+    const token = localStorage.getItem('token');
+    const dados = { data, inicio, fim, salaId: parseInt(salaId), moduloId: parseInt(moduloId) };
+
+    try {
+        const res = await fetch(`${API_URL}/horarios`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+            body: JSON.stringify(dados)
+        });
+
+        const json = await res.json();
+
+        if (res.ok) {
+            alert("Horário agendado!");
+            // Fechar Modal
+            const modalEl = document.getElementById('modalAgendarHorario');
+            const modal = bootstrap.Modal.getInstance(modalEl);
+            if (modal) modal.hide();
+
+            // Recarregar Calendário
+            iniciarCalendario(); // Chama a função certa para recarregar
+        } else {
+            alert("Erro: " + json.msg);
+        }
+    } catch (error) {
+        console.error("Erro:", error);
+        alert("Erro de conexão.");
+    }
+};
+
+window.eliminarHorario = async function(id) {
+    if(!confirm("Tens a certeza que queres apagar esta aula?")) return;
+
+    try {
+        const res = await fetch(`${API_URL}/horarios/${id}`, {
+            method: 'DELETE',
+            headers: {'Authorization': 'Bearer ' + localStorage.getItem('token')}
+        });
+        
+        if (res.ok) {
+            alert("Aula eliminada!");
+            iniciarCalendario(); // Recarrega o calendário
+        } else {
+            alert("Erro ao eliminar.");
+        }
+    } catch (e) { 
+        console.error(e); 
+        alert("Erro de conexão.");
+    }
+};
 
 function logout(){localStorage.clear();window.location.href='login.html';}
 function toggleChat(){const w=document.getElementById('chatWindow');w.style.display=w.style.display==='flex'?'none':'flex';if(w.style.display==='flex')setTimeout(()=>document.getElementById('chatInput').focus(),100);}

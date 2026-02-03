@@ -1,12 +1,15 @@
 const express = require('express');
 const router = express.Router();
-const moduloController = require('../controllers/moduloController');
+const controller = require('../controllers/moduloController');
+const auth = require('../middleware/auth'); // Confirma se tens o middleware de autenticação
 
-// Se não tiveres middleware, remove o 'authMiddleware' das linhas abaixo
-router.get('/', moduloController.listarModulos);
-router.post('/', moduloController.criarModulo);
-router.put('/:id', moduloController.atualizarModulo);
-router.delete('/:id', moduloController.eliminarModulo);
-router.get('/formador/:id', moduloController.listarModulosDoFormador);
+// ==========================================================
+// ROTAS DE MÓDULOS
+// ==========================================================
+
+router.get('/', auth, controller.listarModulos); 
+router.post('/', auth, controller.criarModulo);
+router.put('/:id', auth, controller.atualizarModulo);
+router.delete('/:id', auth, controller.eliminarModulo); 
 
 module.exports = router;

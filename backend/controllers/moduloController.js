@@ -1,103 +1,88 @@
-const { Modulo, User, Sala } = require('../models/associations');
+const { Modulo, User, Sala } = require('../models/associations'); 
 
+// 1. LISTAR (GET)
 exports.listarModulos = async (req, res) => {
     try {
         const { cursoId } = req.query;
-        const whereCondition = cursoId ? { cursoId } : {};
+        const whereClause = cursoId ? { cursoId } : {};
 
         const modulos = await Modulo.findAll({
-            where: whereCondition,
-            // AQUI ESTÁ A MAGIA: Trazer os dados das tabelas relacionadas
+            where: whereClause,
             include: [
-                { model: User, as: 'Formador', attributes: ['nome_completo'] },
-                { model: Sala, attributes: ['nome'] }
+                { model: Sala, attributes: ['nome'] },
+                // O 'as' tem de bater certo com o associations.js ('Formador')
+                { model: User, as: 'Formador', attributes: ['id_user', 'nome_completo'] } 
             ]
         });
-        
         res.json(modulos);
     } catch (error) {
-        console.error("Erro ao listar:", error);
-        res.status(500).json({ msg: "Erro ao listar módulos." });
+        console.error(error);
+        res.status(500).json({ msg: "Erro ao listar." });
     }
 };
 
+// 2. CRIAR (POST)
 exports.criarModulo = async (req, res) => {
     try {
-        // Receber formadorId e salaId (podem vir vazios/null)
-        const { nome, descricao, cursoId, formadorId, salaId } = req.body;
-        
-        if (!cursoId) return res.status(400).json({ msg: "Curso obrigatório!" });
+        const { nome, descricao, cursoId, formadorId, userId, salaId, duracao } = req.body;
 
-        // Converter string vazia "" para null se necessário
-        const fId = formadorId || null;
-        const sId = salaId || null;
+        // Lógica para apanhar o ID do formador venha ele como vier
+        const idFinalFormador = formadorId || userId || null;
 
-        await Modulo.create({ nome, descricao, cursoId, formadorId: fId, salaId: sId });
+        await Modulo.create({
+            nome,
+            descricao,
+            duracao: duracao || 50,
+            cursoId,
+            userId: idFinalFormador, // Grava na coluna correta (userId)
+            salaId: salaId || null
+        });
+
         res.status(201).json({ msg: "Módulo criado!" });
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ msg: "Erro ao criar." });
+        console.error("Erro criar módulo:", error);
+        res.status(500).json({ msg: "Erro ao criar módulo." });
     }
 };
 
+// 3. ATUALIZAR (PUT)
 exports.atualizarModulo = async (req, res) => {
     try {
         const { id } = req.params;
-        const { nome, descricao, formadorId, salaId } = req.body;
+        const { nome, descricao, cursoId, formadorId, userId, salaId, duracao } = req.body;
 
         const modulo = await Modulo.findByPk(id);
-        if (!modulo) return res.status(404).json({ msg: "Não encontrado" });
+        if (!modulo) return res.status(404).json({ msg: "Módulo não encontrado." });
+
+        const idFinalFormador = formadorId || userId || null;
 
         modulo.nome = nome;
         modulo.descricao = descricao;
-        // Atualizar opcionais
-        modulo.formadorId = formadorId || null;
+        modulo.duracao = duracao;
+        modulo.cursoId = cursoId;
+        modulo.userId = idFinalFormador;
         modulo.salaId = salaId || null;
 
         await modulo.save();
-        res.json({ msg: "Atualizado!" });
+
+        res.json({ msg: "Módulo atualizado!" });
     } catch (error) {
-        console.error(error);
+        console.error("Erro atualizar:", error);
         res.status(500).json({ msg: "Erro ao atualizar." });
     }
 };
 
+// 4. ELIMINAR (DELETE) - ESTA ERA A QUE FALTAVA!
 exports.eliminarModulo = async (req, res) => {
     try {
         const { id } = req.params;
-        await Modulo.destroy({ where: { id_modulo: id } });
-        res.json({ msg: "Eliminado!" });
-    } catch (error) {
-        res.status(500).json({ msg: "Erro ao eliminar." });
-    }
-};
+        const resultado = await Modulo.destroy({ where: { id_modulo: id } });
 
-// Listar módulos atribuídos a um Formador específico
-exports.listarModulosDoFormador = async (req, res) => {
-    try {
-        const { id } = req.params; 
-        const { Modulo, Curso, Sala } = require('../models/associations');
+        if (!resultado) return res.status(404).json({ msg: "Módulo não encontrado." });
 
-        const modulos = await Modulo.findAll({
-            where: { formadorId: id },
-            include: [
-                { 
-                    model: Curso, 
-                    attributes: ['nome', 'area'],
-                    required: false // Traz o módulo mesmo que não tenha curso (para não dar erro)
-                },
-                // Traz o nome da Sala
-                { 
-                    model: Sala, 
-                    attributes: ['nome'],
-                    required: false
-                }
-            ]
-        });
-        
-        res.json(modulos);
+        res.json({ msg: "Módulo eliminado com sucesso!" });
     } catch (error) {
-        console.error("Erro modulos formador:", error);
-        res.status(500).json({ msg: "Erro ao buscar módulos." });
+        console.error("Erro ao apagar:", error);
+        res.status(500).json({ msg: "Erro ao eliminar módulo." });
     }
 };

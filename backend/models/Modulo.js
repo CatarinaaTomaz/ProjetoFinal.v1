@@ -27,8 +27,10 @@ const Modulo = db.define('Modulo', {
         type: DataTypes.INTEGER,
         allowNull: true 
     },
-    duracao_total: { 
-        type: DataTypes.INTEGER, defaultValue: 50 
+    duracao: { 
+        type: DataTypes.INTEGER, 
+        allowNull: false, 
+        defaultValue: 50 // Valor padrão caso te esqueças
     }
 }, {
     tableName: 'modulos',

@@ -1,9 +1,14 @@
 const express = require('express');
 const router = express.Router();
-const horarioController = require('../controllers/horarioController');
+const controller = require('../controllers/horarioController'); 
+const auth = require('../middleware/auth');
 
-router.get('/', horarioController.listarHorarios);
-router.post('/', horarioController.criarHorario);
-router.delete('/:id', horarioController.eliminarHorario);
+// ==========================================================
+// ROTAS DE HORÁRIOS
+// ==========================================================
+
+router.get('/', auth, controller.listarHorarios);
+router.post('/', auth, controller.criarHorario);
+router.delete('/:id', auth, controller.eliminarHorario);
 
 module.exports = router;

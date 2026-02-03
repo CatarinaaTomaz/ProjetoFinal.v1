@@ -156,43 +156,55 @@
         </div>
     </div>
 </div>
-<div class="modal fade" id="modalModulo" tabindex="-1" aria-hidden="true">
+<div class="modal fade" id="modalCriarModulo" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header bg-warning text-dark">
                 <h5 class="modal-title" id="tituloModalModulo">Novo Módulo</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
+            
             <div class="modal-body">
                 <form id="formModulo">
                     <input type="hidden" id="moduloId">
-                    <input type="hidden" id="moduloCursoId"> <div class="mb-3">
+                    <input type="hidden" id="moduloCursoId"> 
+                    
+                    <div class="mb-3">
                         <label class="form-label">Nome do Módulo</label>
                         <input type="text" class="form-control" id="moduloNome" required placeholder="Ex: Programação Web">
                     </div>
+                    
                     <div class="mb-3">
                         <label class="form-label">Descrição (Opcional)</label>
                         <textarea class="form-control" id="moduloDescricao" rows="3"></textarea>
                     </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Duração Total (Horas)</label>
+                        <input type="number" class="form-control" id="moduloDuracao" required placeholder="Ex: 50" min="1">
+                    </div>
+                    
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <label class="form-label">Formador (Opcional)</label>
+                            <label class="form-label">Formador</label>
                             <select class="form-select" id="moduloFormador">
-                                <option value="">-- Sem Formador --</option>
-                                </select>
+                                <option value="">A carregar...</option>
+                            </select>
                         </div>
+                        
                         <div class="col-md-6 mb-3">
-                            <label class="form-label">Sala (Opcional)</label>
+                            <label class="form-label">Sala Habitual</label>
                             <select class="form-select" id="moduloSala">
-                                <option value="">-- Sem Sala --</option>
-                                </select>
+                                <option value="">A carregar...</option>
+                            </select>
                         </div>
                     </div>
                 </form>
             </div>
+            
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                <button type="button" class="btn btn-warning" onclick="guardarModulo()">Guardar</button>
+                <button type="button" class="btn btn-warning" id="btnGuardarModulo" onclick="window.guardarModulo()">Guardar</button>
             </div>
         </div>
     </div>
@@ -314,42 +326,49 @@
         </div>
     </div>
 </div>
-<div class="modal fade" id="modalHorario" tabindex="-1" aria-hidden="true">
+<div class="modal fade" id="modalAgendarHorario" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title">Agendar Sala</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                <h5 class="modal-title">Agendar Aula</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
                 <form id="formHorario">
                     <div class="mb-3">
                         <label class="form-label">Data</label>
-                        <input type="date" class="form-control" id="hData" required>
+                        <input type="date" class="form-control" id="horarioData" required>
                     </div>
-                    <div class="row mb-3">
-                        <div class="col-6">
+
+                    <div class="row">
+                        <div class="col-6 mb-3">
                             <label class="form-label">Início</label>
-                            <input type="time" class="form-control" id="hInicio" required>
+                            <input type="time" class="form-control" id="horarioInicio" required>
                         </div>
-                        <div class="col-6">
+                        <div class="col-6 mb-3">
                             <label class="form-label">Fim</label>
-                            <input type="time" class="form-control" id="hFim" required>
+                            <input type="time" class="form-control" id="horarioFim" required>
                         </div>
                     </div>
+
                     <div class="mb-3">
                         <label class="form-label">Sala</label>
-                        <select class="form-select" id="hSala"></select>
+                        <select class="form-select" id="horarioSala">
+                            <option value="">A carregar...</option>
+                        </select>
                     </div>
+
                     <div class="mb-3">
-                        <label class="form-label">Módulo (Turma)</label>
-                        <select class="form-select" id="hModulo"></select>
+                        <label class="form-label">Módulo</label>
+                        <select class="form-select" id="horarioModulo">
+                            <option value="">A carregar...</option>
+                        </select>
                     </div>
                 </form>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                <button type="button" class="btn btn-primary" onclick="guardarHorario()">Agendar</button>
+                <button type="button" class="btn btn-primary" onclick="window.guardarHorario()">Agendar</button>
             </div>
         </div>
     </div>
