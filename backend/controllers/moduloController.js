@@ -1,23 +1,32 @@
-const { Modulo, User, Sala } = require('../models/associations'); 
+const { Modulo, User, Sala, Curso } = require('../models/associations');
 
 // 1. LISTAR (GET)
 exports.listarModulos = async (req, res) => {
     try {
-        const { cursoId } = req.query;
-        const whereClause = cursoId ? { cursoId } : {};
+        // Recebe cursoId E formadorId da URL
+        const { cursoId, formadorId } = req.query;
+        
+        const whereClause = {};
+        
+        // Se vier cursoId, filtra por curso
+        if (cursoId) whereClause.cursoId = cursoId;
+        
+        // Se vier formadorId, filtra por formador (userId na BD)
+        if (formadorId) whereClause.userId = formadorId;
 
         const modulos = await Modulo.findAll({
             where: whereClause,
             include: [
                 { model: Sala, attributes: ['nome'] },
-                // O 'as' tem de bater certo com o associations.js ('Formador')
-                { model: User, as: 'Formador', attributes: ['id_user', 'nome_completo'] } 
+                { model: User, as: 'Formador', attributes: ['id_user', 'nome_completo'] },
+                // Adicionei o Curso para aparecer "Programação (TGPSI)" na lista
+                { model: Curso, attributes: ['nome'] } 
             ]
         });
         res.json(modulos);
     } catch (error) {
         console.error(error);
-        res.status(500).json({ msg: "Erro ao listar." });
+        res.status(500).json({ msg: "Erro ao listar módulos." });
     }
 };
 

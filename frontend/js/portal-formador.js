@@ -1,50 +1,105 @@
 // ==========================================
 // CONFIGURAÇÃO INICIAL
 // ==========================================
-const API_BASE = (typeof window.API_URL !== 'undefined') ? window.API_URL : 'http://localhost:3000/api';
+// Define a URL base da API
+const API_BASE = 'http://localhost:3000/api';
 const SERVER_URL = 'http://localhost:3000'; 
 
 console.log("🚀 Portal Formador carregado! API:", API_BASE);
 
 document.addEventListener("DOMContentLoaded", () => {
+    // 1. Verificar Login
     const token = localStorage.getItem('token');
     const userStr = localStorage.getItem('user');
 
-    if (!token || !userStr) { window.location.href = 'login.html'; return; }
+    if (!token || !userStr) { 
+        window.location.href = 'login.html'; 
+        return; 
+    }
 
     try {
         const user = JSON.parse(userStr);
 
-        // Redirecionamentos de Segurança
+        // 2. Redirecionamentos de Segurança (Quem não é formador, sai daqui)
         if (user.role === 'Admin') window.location.href = 'dashboard.html';
         if (user.role === 'Formando') window.location.href = 'portal-aluno.html';
 
-        // Preencher HTML
+        // 3. Preencher Dados do Perfil no HTML
         if(document.getElementById('nomeUser')) document.getElementById('nomeUser').textContent = user.nome || user.nome_completo;
         if(document.getElementById('userEmail')) document.getElementById('userEmail').textContent = user.email;
         if(document.getElementById('userId')) document.getElementById('userId').textContent = user.id || user.id_user;
         if(document.getElementById('roleUser')) document.getElementById('roleUser').textContent = user.role;
 
-        // Foto
+        // Foto de Perfil
         if (user.foto) {
              const fotoSrc = user.foto.startsWith('http') ? user.foto : `${SERVER_URL}/uploads/${user.foto}`;
              const img = document.getElementById('imgPerfil');
              if(img) img.src = fotoSrc;
         }
 
-        // --- CARREGAR TUDO ---
+        // 4. CARREGAR DADOS DA PÁGINA
         carregarMeusModulos();
-        iniciarCalendarioDisponibilidade(); // Calendário Verde (Editar)
-        iniciarCalendarioAulas();           // Calendário Azul (Ver)
+        iniciarCalendarioDisponibilidade(); 
+        iniciarCalendarioAulas();           
 
     } catch (e) {
-        console.error("Erro crítico:", e);
-        logout();
+        console.error("Erro crítico ao iniciar:", e);
+        // logout(); // Opcional: força logout se os dados estiverem corrompidos
     }
 });
 
 // ==========================================
-// 1. CALENDÁRIO DE DISPONIBILIDADE (VERDE - EDITÁVEL)
+// FUNÇÃO: CARREGAR MÓDULOS (CORRIGIDA)
+// ==========================================
+async function carregarMeusModulos() {
+    // Busca o user guardado e faz parse
+    const userStr = localStorage.getItem('user');
+    if (!userStr) return;
+    
+    const user = JSON.parse(userStr);
+    // Garante que apanha o ID (seja id ou id_user)
+    const userId = user.id || user.id_user;
+
+    const container = document.getElementById('tabelaMeusModulos');
+    if (!container) return; 
+
+    try {
+        // Usa API_BASE que definimos no topo
+        const res = await fetch(`${API_BASE}/modulos?formadorId=${userId}`, {
+            headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') }
+        });
+        
+        const modulos = await res.json();
+        
+        container.innerHTML = '';
+
+        if (modulos.length === 0) {
+            container.innerHTML = '<tr><td colspan="4" class="text-center py-3">Ainda não tens módulos atribuídos.</td></tr>';
+            return;
+        }
+
+        modulos.forEach(m => {
+            const nomeCurso = m.Curso ? m.Curso.nome : 'Geral';
+            const nomeSala = m.Sala ? m.Sala.nome : 'Sem Sala';
+            
+            container.innerHTML += `
+                <tr>
+                    <td class="fw-bold text-primary">${m.nome}</td>
+                    <td><span class="badge bg-light text-dark border">${nomeCurso}</span></td>
+                    <td>${nomeSala}</td>
+                    <td>${m.duracao || 0} horas</td>
+                </tr>
+            `;
+        });
+
+    } catch (error) {
+        console.error("Erro ao carregar módulos:", error);
+        container.innerHTML = '<tr><td colspan="4" class="text-center text-danger">Erro ao carregar dados.</td></tr>';
+    }
+}
+
+// ==========================================
+// CALENDÁRIO 1: DISPONIBILIDADE (VERDE)
 // ==========================================
 function iniciarCalendarioDisponibilidade() {
     const calendarEl = document.getElementById('calendarDisponibilidade');
@@ -62,10 +117,8 @@ function iniciarCalendarioDisponibilidade() {
         slotMaxTime: '23:00:00',
         allDaySlot: false,
         selectable: true,
-        selectMirror: true,
-        height: '100%',
+        height: 'auto', // Ajusta altura automaticamente
         
-        // Carregar Disponibilidades
         events: async (info, successCallback, failureCallback) => {
             try {
                 const res = await fetch(`${API_BASE}/disponibilidades/${userId}`, { 
@@ -78,16 +131,14 @@ function iniciarCalendarioDisponibilidade() {
                     title: 'Disponível',
                     start: d.data_inicio,
                     end: d.data_fim,
-                    color: '#198754', // Verde
-                    display: 'block'
+                    color: '#198754'
                 }));
                 successCallback(eventos);
             } catch (e) { failureCallback(e); }
         },
 
-        // Criar (Arrastar)
         select: async (info) => {
-            if (confirm(`Marcar disponibilidade?`)) {
+            if (confirm(`Marcar disponibilidade das ${info.start.toLocaleTimeString()} às ${info.end.toLocaleTimeString()}?`)) {
                 try {
                     const res = await fetch(`${API_BASE}/disponibilidades`, {
                         method: 'POST',
@@ -100,7 +151,6 @@ function iniciarCalendarioDisponibilidade() {
             calendar.unselect();
         },
 
-        // Apagar (Clicar)
         eventClick: async (info) => {
             if (confirm("Remover esta disponibilidade?")) {
                 try {
@@ -116,7 +166,7 @@ function iniciarCalendarioDisponibilidade() {
 }
 
 // ==========================================
-// 2. CALENDÁRIO DE AULAS (AZUL - SÓ LEITURA)
+// CALENDÁRIO 2: AULAS (AZUL)
 // ==========================================
 function iniciarCalendarioAulas() {
     const calendarEl = document.getElementById('calendarHorario');
@@ -133,96 +183,71 @@ function iniciarCalendarioAulas() {
         slotMinTime: '08:00:00',
         slotMaxTime: '23:00:00',
         allDaySlot: false,
-        height: '100%',
+        height: 'auto',
         
-        // Carregar Aulas (Filtradas pelo ID do Formador)
         events: async (info, successCallback, failureCallback) => {
             try {
-                // Usamos a rota de horarios com filtro ?formadorId=X
                 const res = await fetch(`${API_BASE}/horarios?formadorId=${userId}`, { 
                     headers: { 'Authorization': 'Bearer ' + token } 
                 });
                 const horarios = await res.json();
                 
-                const eventos = horarios.map(h => {
-                    const nomeModulo = h.Modulo ? h.Modulo.nome : 'Módulo Removido';
-                    const nomeSala = h.Sala ? h.Sala.nome : 'Sem Sala';
-                    
-                    return {
-                        id: h.id_horario,
-                        title: `AULA: ${nomeModulo} (${nomeSala})`,
-                        start: `${h.data_aula.split('T')[0]}T${h.hora_inicio}`,
-                        end: `${h.data_aula.split('T')[0]}T${h.hora_fim}`,
-                        color: '#0d6efd', // Azul
-                        textColor: '#ffffff'
-                    };
-                });
+                const eventos = horarios.map(h => ({
+                    id: h.id_horario,
+                    title: `AULA: ${h.Modulo ? h.Modulo.nome : 'Módulo'} (${h.Sala ? h.Sala.nome : '?'})`,
+                    start: `${h.data_aula.split('T')[0]}T${h.hora_inicio}`,
+                    end: `${h.data_aula.split('T')[0]}T${h.hora_fim}`,
+                    color: '#0d6efd'
+                }));
                 successCallback(eventos);
-            } catch (e) { 
-                console.error("Erro ao carregar aulas:", e);
-                failureCallback(e); 
-            }
+            } catch (e) { failureCallback(e); }
         },
 
-        // Clique no evento (Apenas mostra info, não apaga)
         eventClick: (info) => {
-            alert(`Detalhes:\n${info.event.title}\nInício: ${info.event.start.toLocaleTimeString()}\nFim: ${info.event.end.toLocaleTimeString()}`);
+            alert(`Detalhes da Aula:\n${info.event.title}\nInício: ${info.event.start.toLocaleTimeString()}\nFim: ${info.event.end.toLocaleTimeString()}`);
         }
     });
     calendar.render();
 }
 
-// ==========================================
-// MÓDULOS E OUTROS
-// ==========================================
-async function carregarMeusModulos() {
-    const user = JSON.parse(localStorage.getItem('user'));
-    const token = localStorage.getItem('token');
-    const tbody = document.getElementById('listaMeusModulos');
-    const userId = user.id || user.id_user;
-
-    try {
-        const res = await fetch(`${API_BASE}/modulos/formador/${userId}`, { headers: { 'Authorization': 'Bearer ' + token } });
-        const modulos = await res.json();
-
-        if (!tbody) return;
-        tbody.innerHTML = '';
-        if (modulos.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="4" class="text-center p-4 text-muted">Ainda não tens módulos atribuídos.</td></tr>';
-            return;
-        }
-
-        modulos.forEach(m => {
-            const nomeCurso = m.Curso ? `<span class="badge bg-secondary">${m.Curso.nome}</span>` : '<span class="text-danger">Sem Curso</span>';
-            const nomeSala = m.Sala ? `<span class="badge bg-info text-dark">${m.Sala.nome}</span>` : '<span class="badge bg-light text-dark border">Sem Sala</span>';
-            tbody.innerHTML += `<tr><td class="fw-bold text-primary">${m.nome}</td><td>${nomeCurso}</td><td>${nomeSala}</td><td>${m.descricao || '-'}</td></tr>`;
-        });
-    } catch (e) { console.error("Erro módulos:", e); }
-}
-
+// Função Upload Foto
 async function uploadFoto() {
     const input = document.getElementById('inputFoto');
     if (!input.files || !input.files[0]) return;
+
     const user = JSON.parse(localStorage.getItem('user'));
-    const token = localStorage.getItem('token');
     const userId = user.id || user.id_user;
+    const token = localStorage.getItem('token');
+
     const formData = new FormData();
     formData.append('foto', input.files[0]);
-    formData.append('nome', user.nome || user.nome_completo);
+    // Envia nome/email para não dar erro se o backend validar obrigatoriedade
+    formData.append('nome', user.nome || user.nome_completo); 
     formData.append('email', user.email);
 
     try {
         const res = await fetch(`${API_BASE}/users/${userId}`, {
-            method: 'PUT', headers: { 'Authorization': 'Bearer ' + token }, body: formData
+            method: 'PUT',
+            headers: { 'Authorization': 'Bearer ' + token },
+            body: formData
         });
+
         if(res.ok) {
             const data = await res.json();
-            user.foto = data.foto;
+            // Atualiza localstorage com a nova foto
+            user.foto = data.foto || data.user.foto; 
             localStorage.setItem('user', JSON.stringify(user));
-            document.getElementById('imgPerfil').src = `${SERVER_URL}/uploads/${data.foto}?t=${Date.now()}`;
+            
+            // Atualiza imagem na hora
+            document.getElementById('imgPerfil').src = `${SERVER_URL}/uploads/${user.foto}?t=${Date.now()}`;
             alert("Foto atualizada!");
+        } else {
+            alert("Erro ao enviar foto.");
         }
     } catch (e) { console.error(e); }
 }
 
-function logout() { localStorage.clear(); window.location.href = 'login.html'; }
+function logout() {
+    localStorage.clear();
+    window.location.href = 'login.html';
+}
