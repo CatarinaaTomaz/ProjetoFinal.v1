@@ -332,6 +332,9 @@
             <div class="modal-header bg-primary text-white">
                 <h5 class="modal-title">Agendar Aula</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <button class="btn btn-success ms-2" onclick="abrirModalAuto()">
+                    <i class="fas fa-magic me-2"></i>Gerar Automático
+                </button>
             </div>
             <div class="modal-body">
                 <form id="formHorario">
@@ -369,6 +372,43 @@
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
                 <button type="button" class="btn btn-primary" onclick="window.guardarHorario()">Agendar</button>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="modal fade" id="modalAutoHorario" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title"><i class="fas fa-robot me-2"></i>Gerador de Horários (IA)</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="small text-muted">
+                    Este sistema vai procurar as disponibilidades do formador e preencher o calendário até completar as horas do módulo.
+                </p>
+                <form id="formAuto">
+                    <div class="mb-3">
+                        <label class="form-label">Qual o Módulo?</label>
+                        <select class="form-select" id="autoModulo"></select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Em que Sala?</label>
+                        <select class="form-select" id="autoSala"></select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Começar a agendar a partir de:</label>
+                        <input type="date" class="form-control" id="autoDataInicio">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-success" onclick="gerarHorarioAutomatico()">
+                    <i class="fas fa-play me-2"></i>Gerar Agora
+                </button>
             </div>
         </div>
     </div>

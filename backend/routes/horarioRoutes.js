@@ -10,5 +10,6 @@ const auth = require('../middleware/auth');
 router.get('/', auth, controller.listarHorarios);
 router.post('/', auth, controller.criarHorario);
 router.delete('/:id', auth, controller.eliminarHorario);
+router.post('/auto', auth, controller.gerarHorariosAuto);
 
 module.exports = router;

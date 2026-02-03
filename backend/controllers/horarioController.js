@@ -126,3 +126,98 @@ exports.eliminarHorario = async (req, res) => {
         res.status(500).json({ msg: "Erro ao eliminar horário." });
     }
 };
+
+// 4. GERAR HORÁRIOS AUTOMATICAMENTE (IA BÁSICA) 🤖
+exports.gerarHorariosAuto = async (req, res) => {
+    try {
+        const { moduloId, salaId, dataInicio } = req.body;
+
+        // 1. Buscar o Módulo para saber duração e formador
+        const modulo = await Modulo.findByPk(moduloId);
+        if (!modulo) return res.status(404).json({ msg: "Módulo não encontrado." });
+
+        const formadorId = modulo.userId; // O ID do formador
+        if (!formadorId) return res.status(400).json({ msg: "Este módulo não tem formador associado." });
+
+        // 2. Calcular quantas horas faltam marcar
+        const aulasExistentes = await Horario.findAll({ where: { moduloId } });
+        let horasMarcadas = 0;
+        aulasExistentes.forEach(a => {
+            horasMarcadas += (timeToDecimal(a.hora_fim) - timeToDecimal(a.hora_inicio));
+        });
+
+        let horasRestantes = modulo.duracao - horasMarcadas;
+
+        if (horasRestantes <= 0) {
+            return res.status(400).json({ msg: "Este módulo já tem as horas todas marcadas!" });
+        }
+
+        // 3. Buscar Disponibilidades do Formador (apenas futuras)
+        // Precisamos de importar o modelo Disponibilidade no topo se ainda não estiver
+        const { Disponibilidade } = require('../models/associations'); 
+        
+        const disponibilidades = await Disponibilidade.findAll({
+            where: {
+                formadorId: formadorId,
+                data_inicio: { [Op.gte]: dataInicio } // A partir da data escolhida
+            },
+            order: [['data_inicio', 'ASC']] // Começa pelas mais próximas
+        });
+
+        if (disponibilidades.length === 0) {
+            return res.status(400).json({ msg: "O formador não tem disponibilidade registada a partir dessa data." });
+        }
+
+        let aulasCriadas = 0;
+
+        // 4. Loop Mágico: Preencher buracos
+        for (const disp of disponibilidades) {
+            if (horasRestantes <= 0) break;
+
+            const inicioISO = new Date(disp.data_inicio).toISOString();
+            const fimISO = new Date(disp.data_fim).toISOString();
+
+            // Agora já podemos fazer split sem erro
+            const dataAula = inicioISO.split('T')[0];
+            const horaInicioStr = inicioISO.split('T')[1].slice(0, 5); // "09:00"
+            const horaFimStr = fimISO.split('T')[1].slice(0, 5);
+
+            const duracaoSlot = timeToDecimal(horaFimStr) - timeToDecimal(horaInicioStr);
+
+            // Verificar se a SALA está livre nesse horário
+            const salaOcupada = await Horario.findOne({
+                where: {
+                    data_aula: dataAula,
+                    salaId: salaId,
+                    [Op.or]: [
+                        { hora_inicio: { [Op.between]: [horaInicioStr, horaFimStr] } },
+                        { hora_fim: { [Op.between]: [horaInicioStr, horaFimStr] } }
+                    ]
+                }
+            });
+
+            if (!salaOcupada) {
+                // Criar a aula!
+                await Horario.create({
+                    data_aula: dataAula,
+                    hora_inicio: horaInicioStr,
+                    hora_fim: horaFimStr,
+                    salaId: salaId,
+                    moduloId: moduloId
+                });
+
+                horasRestantes -= duracaoSlot;
+                aulasCriadas++;
+            }
+        }
+
+        res.json({ 
+            msg: `Processo concluído! ${aulasCriadas} aulas agendadas automaticamente.`,
+            horasFaltam: Math.max(0, horasRestantes)
+        });
+
+    } catch (error) {
+        console.error("Erro Auto-Agendamento:", error);
+        res.status(500).json({ msg: "Erro ao gerar horários." });
+    }
+};

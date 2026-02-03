@@ -678,6 +678,69 @@ window.eliminarHorario = async function(id) {
     }
 };
 
+// --- GERAÇÃO AUTOMÁTICA DE HORÁRIOS ---
+// 1. Abrir o Modal e carregar listas
+window.abrirModalAuto = async function() {
+    const token = localStorage.getItem('token');
+    
+    // Carregar Módulos e Salas (reutiliza endpoints existentes)
+    const resM = await fetch(`${API_URL}/modulos`, { headers: {'Authorization': 'Bearer '+token} });
+    const modulos = await resM.json();
+    
+    const resS = await fetch(`${API_URL}/salas`, { headers: {'Authorization': 'Bearer '+token} });
+    const salas = await resS.json();
+
+    // Preencher Selects
+    const selMod = document.getElementById('autoModulo');
+    selMod.innerHTML = modulos.map(m => `<option value="${m.id_modulo}">${m.nome} (Faltam horas)</option>`).join('');
+
+    const selSala = document.getElementById('autoSala');
+    selSala.innerHTML = salas.map(s => `<option value="${s.id_sala}">${s.nome}</option>`).join('');
+
+    // Preencher Data de Hoje por defeito
+    document.getElementById('autoDataInicio').value = new Date().toISOString().split('T')[0];
+
+    new bootstrap.Modal(document.getElementById('modalAutoHorario')).show();
+};
+
+// 2. Enviar pedido ao Backend
+window.gerarHorarioAutomatico = async function() {
+    const moduloId = document.getElementById('autoModulo').value;
+    const salaId = document.getElementById('autoSala').value;
+    const dataInicio = document.getElementById('autoDataInicio').value;
+
+    if(!moduloId || !salaId || !dataInicio) return alert("Preenche tudo!");
+
+    if(!confirm("Isto vai criar várias aulas automaticamente baseadas na disponibilidade do formador. Continuar?")) return;
+
+    try {
+        const res = await fetch(`${API_URL}/horarios/auto`, {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + localStorage.getItem('token')
+            },
+            body: JSON.stringify({ moduloId, salaId, dataInicio })
+        });
+
+        const json = await res.json();
+
+        if(res.ok) {
+            alert(json.msg);
+            bootstrap.Modal.getInstance(document.getElementById('modalAutoHorario')).hide();
+            // Recarregar calendário se a função existir
+            if(window.iniciarCalendario) window.iniciarCalendario(); 
+            else window.location.reload();
+        } else {
+            alert("Erro: " + json.msg);
+        }
+
+    } catch (error) {
+        console.error(error);
+        alert("Erro ao comunicar com o servidor.");
+    }
+};
+
 function logout(){localStorage.clear();window.location.href='login.html';}
 function toggleChat(){const w=document.getElementById('chatWindow');w.style.display=w.style.display==='flex'?'none':'flex';if(w.style.display==='flex')setTimeout(()=>document.getElementById('chatInput').focus(),100);}
 async function enviarMensagem(){const i=document.getElementById('chatInput');const t=i.value.trim();const b=document.getElementById('chatBody');if(!t)return;b.innerHTML+=`<div class="msg msg-user">${t}</div>`;i.value='';b.scrollTop=b.scrollHeight;try{const r=await fetch(`${API_URL}/chat`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+localStorage.getItem('token')},body:JSON.stringify({mensagem:t})});const d=await r.json();b.innerHTML+=`<div class="msg msg-bot">${d.reply}</div>`;}catch(e){b.innerHTML+='<div class="msg msg-bot text-danger">Erro.</div>';}b.scrollTop=b.scrollHeight;}
