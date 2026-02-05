@@ -49,6 +49,10 @@ app.use('/api/disponibilidades', disponibilidadeRoutes);
 app.use('/api/inscricoes', inscricaoRoutes);
 
 const PORT = process.env.PORT || 3000;
+// O '0.0.0.0' diz ao servidor: "Aceita pedidos de qualquer lado!"
+app.listen(PORT, '0.0.0.0', () => { 
+    console.log(`🚀 Servidor a ouvir em todas as interfaces na porta ${PORT}`);
+});
 
 // --- FUNÇÕES DE INICIALIZAÇÃO ---
 const { Role, User } = require('./models/associations');
