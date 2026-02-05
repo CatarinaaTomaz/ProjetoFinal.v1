@@ -27,6 +27,7 @@ Curso.belongsToMany(User, { through: Inscricao, foreignKey: 'cursoId' });
 
 Inscricao.belongsTo(User, { foreignKey: 'userId' });
 Inscricao.belongsTo(Curso, { foreignKey: 'cursoId' });
+
 User.hasMany(Inscricao, { foreignKey: 'userId' });
 Curso.hasMany(Inscricao, { foreignKey: 'cursoId' });
 

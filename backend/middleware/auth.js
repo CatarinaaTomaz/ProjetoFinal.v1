@@ -1,29 +1,34 @@
 const jwt = require('jsonwebtoken');
 
 module.exports = function(req, res, next) {
-    // 1. Ler o token do cabeçalho
+    // 1. Ler o cabeçalho
     const tokenHeader = req.header('Authorization');
 
-    // 2. Verificar se existe token
+    // LOG DO ESPIÃO 🕵️‍♂️
+    console.log("--- DIAGNÓSTICO AUTH ---");
+    console.log("1. Cabeçalho Recebido:", tokenHeader);
+
     if (!tokenHeader) {
-        return res.status(401).json({ msg: 'Sem token, autorização negada' });
+        return res.status(401).json({ msg: "Sem token, autorização negada" });
     }
 
     try {
-        // 3. Limpar o prefixo "Bearer " se ele existir
-        // (Alguns frontends enviam "Bearer <token>", outros só o token)
+        // 2. Limpar a palavra 'Bearer ' (se existir)
+        // Se o teu token vier como "Bearer eyJhb...", ficamos só com "eyJhb..."
         const token = tokenHeader.replace('Bearer ', '');
-
-        // 4. Decifrar o token
-        // Usa a mesma chave secreta que definiste no .env ou usa 'secret' como fallback
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret');
-
-        // 5. Adicionar o utilizador ao pedido (req)
-        req.user = decoded.user;
         
-        // 6. Passar para a próxima função (o controller)
+        console.log("2. Token Limpo:", token.substring(0, 20) + "..."); // Mostra só o início
+        console.log("3. Segredo usado:", process.env.JWT_SECRET); // CONFIRMA SE ISTO APARECE!
+
+        // 3. Verificar
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        req.user = decoded;
+        
+        console.log("✅ Token Válido para User ID:", decoded.id);
         next();
+
     } catch (err) {
-        res.status(401).json({ msg: 'Token não é válido' });
+        console.log("❌ ERRO VERIFICAÇÃO:", err.message);
+        res.status(401).json({ msg: "Token não é válido", erro: err.message });
     }
 };

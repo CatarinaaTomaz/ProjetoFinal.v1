@@ -221,3 +221,53 @@ exports.gerarHorariosAuto = async (req, res) => {
         res.status(500).json({ msg: "Erro ao gerar horários." });
     }
 };
+
+exports.listarHorarios = async (req, res) => {
+    try {
+        const { Modulo, Sala, User, Curso, Inscricao, Horario } = require('../models/associations');
+        const { userId } = req.query; // Recebemos o userId do Android
+
+        console.log(`⏰ A pedir horário para User: ${userId}`);
+
+        let whereClause = {};
+
+        if (userId) {
+            const user = await User.findByPk(userId);
+            
+            if (!user) return res.status(404).json([]);
+
+            // === CORREÇÃO: Usar roleId ===
+            if (user.roleId === 2) { // 2 = Formando (Aluno)
+                console.log("🎓 É Aluno. A procurar aulas dos cursos inscritos...");
+                
+                // 1. Descobrir Cursos do Aluno
+                const inscricoes = await Inscricao.findAll({ where: { userId: userId } });
+                const cursosIds = inscricoes.map(i => i.cursoId);
+
+                // 2. Descobrir Aulas desses Cursos
+                // (Nota: Precisamos de garantir que o include do Módulo filtra pelo curso)
+                whereClause['$Modulo.cursoId$'] = cursosIds;
+            } 
+            else if (user.roleId === 3) { // 3 = Formador
+                console.log("💼 É Formador. A procurar aulas dadas por ele...");
+                whereClause['$Modulo.userId$'] = userId;
+            }
+        }
+
+        const horarios = await Horario.findAll({
+            where: whereClause,
+            include: [
+                { model: Sala, attributes: ['nome'] },
+                { model: Modulo, attributes: ['nome', 'cursoId', 'userId'] } // userId aqui é o formador
+            ],
+            order: [['data_aula', 'ASC'], ['hora_inicio', 'ASC']]
+        });
+
+        console.log(`📅 Encontradas ${horarios.length} aulas.`);
+        res.json(horarios);
+
+    } catch (error) {
+        console.error("Erro Horários:", error);
+        res.status(500).json({ msg: "Erro ao listar horários." });
+    }
+};

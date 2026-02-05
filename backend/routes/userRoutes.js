@@ -16,6 +16,7 @@ const storage = multer.diskStorage({
 });
 
 const upload = multer({ storage: storage });
+const authMiddleware = require('../middleware/auth');
 
 // --- 2. Definição das Rotas ---
 
@@ -25,5 +26,6 @@ router.get('/:id', userController.getUserById);
 router.put('/:id', upload.single('foto'), userController.updateUser);
 router.post('/', userController.createUser);
 router.delete('/:id', userController.deleteUser);
+router.get('/:id/cursos', authMiddleware, userController.getMyCursos);
 
 module.exports = router;

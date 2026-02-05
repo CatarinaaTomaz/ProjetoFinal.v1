@@ -96,3 +96,55 @@ exports.createUser = async (req, res) => {
         res.status(201).json({ msg: "Criado!" });
     } catch (error) { res.status(500).json({ msg: "Erro." }); }
 };
+
+// APLICACAO MOBILE - OBTEM CURSOS DO USER (ALUNO OU FORMADOR)
+exports.getMyCursos = async (req, res) => {
+    try {
+        const { id } = req.params;
+        // 1. IMPORTANTE: Adicionei 'Modulo' à lista de importações!
+        const { User, Curso, Inscricao, Modulo } = require('../models/associations');
+
+        // Busca o user
+        const user = await User.findByPk(id);
+        if (!user) return res.status(404).json({ msg: "User não encontrado" });
+
+        console.log(`👤 User ID: ${user.id_user} | Role ID: ${user.roleId}`); 
+
+        let listaParaAndroid = [];
+
+        // === CASO 1: ALUNO (Vê Cursos) ===
+        if (user.roleId === 2) { 
+            console.log("🎓 É Aluno. A buscar inscrições...");
+            const inscricoes = await Inscricao.findAll({
+                where: { userId: id },
+                include: [{ model: Curso }]
+            });
+            listaParaAndroid = inscricoes.filter(i => i.Curso).map(i => i.Curso);
+        } 
+        
+        // === CASO 2: FORMADOR (Vê Módulos) - AQUI ESTÁ A CHAVE DE OURO 🔑 ===
+        else if (user.roleId === 3) { 
+             console.log("💼 É Formador. A buscar os seus módulos...");
+             
+             const modulos = await Modulo.findAll({
+                where: { userId: id }, // Busca módulos onde o 'userId' é o ID deste formador
+                include: [{ model: Curso }] // Trazemos o Curso para saber o nome dele
+             });
+
+             // TRUQUE DE MESTRE:
+             // O Android espera { nome, area }. Nós mapeamos o Módulo para esses campos!
+             listaParaAndroid = modulos.map(m => ({
+                 id: m.id,
+                 nome: m.nome, // O Android mostra o Nome do Módulo em grande
+                 area: m.Curso ? `Curso: ${m.Curso.nome}` : "Geral" // O Android mostra o Curso em pequeno
+             }));
+        }
+
+        console.log(`📦 A enviar ${listaParaAndroid.length} itens.`);
+        res.json(listaParaAndroid);
+
+    } catch (error) {
+        console.error("Erro Cursos:", error);
+        res.status(500).json({ msg: "Erro ao buscar dados." });
+    }
+};

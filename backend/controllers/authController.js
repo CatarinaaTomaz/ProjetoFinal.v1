@@ -1,3 +1,4 @@
+require('dotenv').config();
 const { User, Role } = require('../models/associations');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
@@ -190,7 +191,11 @@ exports.verifyTwoFactor = async (req, res) => {
         user.otp_validade = null;
         await user.save();
 
-        const token = jwt.sign({ id: user.id_user, role: user.Role.descricao }, 'segredo_super_secreto', { expiresIn: '1h' });
+        const token = jwt.sign(
+            { id: user.id_user, role: user.Role.descricao }, 
+            process.env.JWT_SECRET, // <--- AQUI ESTÁ A CORREÇÃO!
+            { expiresIn: '24h' }
+        );
 
         res.json({
             token,
@@ -199,7 +204,7 @@ exports.verifyTwoFactor = async (req, res) => {
                 nome: user.nome_completo,
                 email: user.email,
                 role: user.Role.descricao
-            }
+            },
         });
 
     } catch (error) {
