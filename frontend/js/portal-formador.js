@@ -187,9 +187,9 @@ function iniciarCalendarioAulas() {
         
         events: async (info, successCallback, failureCallback) => {
             try {
-                const res = await fetch(`${API_BASE}/horarios?formadorId=${userId}`, { 
-                    headers: { 'Authorization': 'Bearer ' + token } 
-                });
+                const res = await fetch(`${API_BASE}/horarios?userId=${userId}`, { 
+                headers: { 'Authorization': 'Bearer ' + token } 
+            });
                 const horarios = await res.json();
                 
                 const eventos = horarios.map(h => ({

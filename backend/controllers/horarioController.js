@@ -127,19 +127,22 @@ exports.eliminarHorario = async (req, res) => {
     }
 };
 
-// 4. GERAR HORÁRIOS AUTOMATICAMENTE (IA BÁSICA) 🤖
+
+// 4. GERAR HORÁRIOS AUTOMATICAMENTE (COM PAUSA DE ALMOÇO 🍔)
 exports.gerarHorariosAuto = async (req, res) => {
     try {
         const { moduloId, salaId, dataInicio } = req.body;
+        // Importar Operadores do Sequelize
+        const { Op } = require('sequelize');
 
-        // 1. Buscar o Módulo para saber duração e formador
+        // 1. Validar Módulo e Formador
         const modulo = await Modulo.findByPk(moduloId);
         if (!modulo) return res.status(404).json({ msg: "Módulo não encontrado." });
 
-        const formadorId = modulo.userId; // O ID do formador
+        const formadorId = modulo.userId;
         if (!formadorId) return res.status(400).json({ msg: "Este módulo não tem formador associado." });
 
-        // 2. Calcular quantas horas faltam marcar
+        // 2. Calcular horas que faltam
         const aulasExistentes = await Horario.findAll({ where: { moduloId } });
         let horasMarcadas = 0;
         aulasExistentes.forEach(a => {
@@ -147,73 +150,123 @@ exports.gerarHorariosAuto = async (req, res) => {
         });
 
         let horasRestantes = modulo.duracao - horasMarcadas;
-
         if (horasRestantes <= 0) {
             return res.status(400).json({ msg: "Este módulo já tem as horas todas marcadas!" });
         }
 
-        // 3. Buscar Disponibilidades do Formador (apenas futuras)
-        // Precisamos de importar o modelo Disponibilidade no topo se ainda não estiver
-        const { Disponibilidade } = require('../models/associations'); 
-        
+        // 3. Buscar Disponibilidades
+        const { Disponibilidade } = require('../models/associations');
         const disponibilidades = await Disponibilidade.findAll({
             where: {
                 formadorId: formadorId,
-                data_inicio: { [Op.gte]: dataInicio } // A partir da data escolhida
+                data_inicio: { [Op.gte]: dataInicio }
             },
-            order: [['data_inicio', 'ASC']] // Começa pelas mais próximas
+            order: [['data_inicio', 'ASC']]
         });
 
         if (disponibilidades.length === 0) {
-            return res.status(400).json({ msg: "O formador não tem disponibilidade registada a partir dessa data." });
+            return res.status(400).json({ msg: "Sem disponibilidade registada a partir dessa data." });
         }
 
         let aulasCriadas = 0;
 
-        // 4. Loop Mágico: Preencher buracos
+        // 4. LOOP MÁGICO COM CORTE DE ALMOÇO 🔪🥗
         for (const disp of disponibilidades) {
             if (horasRestantes <= 0) break;
 
             const inicioISO = new Date(disp.data_inicio).toISOString();
             const fimISO = new Date(disp.data_fim).toISOString();
 
-            // Agora já podemos fazer split sem erro
             const dataAula = inicioISO.split('T')[0];
-            const horaInicioStr = inicioISO.split('T')[1].slice(0, 5); // "09:00"
-            const horaFimStr = fimISO.split('T')[1].slice(0, 5);
+            const horaInicioOriginal = inicioISO.split('T')[1].slice(0, 5); // Ex: "09:00"
+            const horaFimOriginal = fimISO.split('T')[1].slice(0, 5);       // Ex: "18:00"
 
-            const duracaoSlot = timeToDecimal(horaFimStr) - timeToDecimal(horaInicioStr);
+            const decInicio = timeToDecimal(horaInicioOriginal);
+            const decFim = timeToDecimal(horaFimOriginal);
 
-            // Verificar se a SALA está livre nesse horário
-            const salaOcupada = await Horario.findOne({
-                where: {
-                    data_aula: dataAula,
-                    salaId: salaId,
-                    [Op.or]: [
-                        { hora_inicio: { [Op.between]: [horaInicioStr, horaFimStr] } },
-                        { hora_fim: { [Op.between]: [horaInicioStr, horaFimStr] } }
-                    ]
+            // --- LÓGICA DO ALMOÇO (13h - 14h) ---
+            let slotsParaTentar = [];
+
+            // Caso 1: O horário é todo de manhã (antes ou até às 13h)
+            if (decFim <= 13) {
+                slotsParaTentar.push({ inicio: horaInicioOriginal, fim: horaFimOriginal });
+            }
+            // Caso 2: O horário é todo de tarde (começa às 14h ou depois)
+            else if (decInicio >= 14) {
+                slotsParaTentar.push({ inicio: horaInicioOriginal, fim: horaFimOriginal });
+            }
+            // Caso 3: O horário ATRAVESSA o almoço (Ex: 09:00 - 17:00)
+            else {
+                // Criar bloco da manhã (Início -> 13:00)
+                if (decInicio < 13) {
+                    slotsParaTentar.push({ inicio: horaInicioOriginal, fim: "13:00" });
                 }
-            });
+                // Criar bloco da tarde (14:00 -> Fim)
+                if (decFim > 14) {
+                    slotsParaTentar.push({ inicio: "14:00", fim: horaFimOriginal });
+                }
+            }
 
-            if (!salaOcupada) {
-                // Criar a aula!
-                await Horario.create({
-                    data_aula: dataAula,
-                    hora_inicio: horaInicioStr,
-                    hora_fim: horaFimStr,
-                    salaId: salaId,
-                    moduloId: moduloId
+            // Agora processamos os "Sub-Slots" criados (Manhã e/ou Tarde)
+            for (const slot of slotsParaTentar) {
+                // Se já acabaram as horas a meio do dia, paramos
+                if (horasRestantes <= 0) break;
+
+                const duracaoSlot = timeToDecimal(slot.fim) - timeToDecimal(slot.inicio);
+
+                // Verificar se a SALA está livre neste sub-slot
+                const salaOcupada = await Horario.findOne({
+                    where: {
+                        data_aula: dataAula,
+                        salaId: salaId,
+                        [Op.or]: [
+                            { hora_inicio: { [Op.between]: [slot.inicio, slot.fim] } },
+                            { hora_fim: { [Op.between]: [slot.inicio, slot.fim] } },
+                            // Caso extra: Aula existente engole a nova aula
+                            { 
+                                [Op.and]: [
+                                    { hora_inicio: { [Op.lte]: slot.inicio } },
+                                    { hora_fim: { [Op.gte]: slot.fim } }
+                                ]
+                            }
+                        ]
+                    }
                 });
 
-                horasRestantes -= duracaoSlot;
-                aulasCriadas++;
+                // Só cria se a sala estiver livre E a duração for válida (>0)
+                if (!salaOcupada && duracaoSlot > 0) {
+                    
+                    // Ajuste final: Se faltam 2h e o slot é de 4h, cortamos o slot
+                    let horaFimFinal = slot.fim;
+                    if (duracaoSlot > horasRestantes) {
+                        // Calcula nova hora de fim (matemática simples para somar horas)
+                        const novoFimDec = timeToDecimal(slot.inicio) + horasRestantes;
+                        // Converte decimal de volta para HH:mm (ex: 12.5 -> 12:30)
+                        const h = Math.floor(novoFimDec);
+                        const m = Math.round((novoFimDec - h) * 60);
+                        horaFimFinal = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+                    }
+
+                    // Recalcular duração real que vamos gastar
+                    const duracaoReal = timeToDecimal(horaFimFinal) - timeToDecimal(slot.inicio);
+
+                    await Horario.create({
+                        data_aula: dataAula,
+                        hora_inicio: slot.inicio,
+                        hora_fim: horaFimFinal,
+                        salaId: salaId,
+                        moduloId: moduloId
+                    });
+
+                    horasRestantes -= duracaoReal;
+                    aulasCriadas++;
+                }
             }
         }
 
-        res.json({ 
-            msg: `Processo concluído! ${aulasCriadas} aulas agendadas automaticamente.`,
-            horasFaltam: Math.max(0, horasRestantes)
+        res.json({
+            msg: `Sucesso! ${aulasCriadas} aulas agendadas (respeitando o almoço).`,
+            horasFaltam: Math.max(0, horasRestantes).toFixed(1)
         });
 
     } catch (error) {
